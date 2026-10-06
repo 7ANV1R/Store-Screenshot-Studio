@@ -1,0 +1,535 @@
+<!doctype html>
+<!-- Procedural "cute 3D icon" props, rendered by models.mjs (`studio model`): generic icons (star, heart, bolt, chat,
+     shield, pin, coin, chart, bell, magnifier, gift) plus commerce models (box, cart, truck, globe, trail, ribbon).
+     Style matches the 3dicons.co set: soft glossy plastic, rounded edges, warm key light + cool rim. -->
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script src="./node_modules/topojson-client/dist/topojson-client.min.js"></script>
+<script src="./node_modules/d3-array/dist/d3-array.min.js"></script>
+<script src="./node_modules/d3-geo/dist/d3-geo.min.js"></script>
+<script type="importmap">{"imports":{"three":"./node_modules/three/build/three.module.js","three/addons/":"./node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
+
+const S = +new URLSearchParams(location.search).get('size') || 1600;   // ?size= for assets shown large
+const q = new URLSearchParams(location.search), model = q.get('m') || 'box';
+const ACCENT = parseInt(q.get('c') || '2f6bff', 16);   // main plastic colour for cart2 / truck2
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+const FULL = model === 'ribbon';                          // ribbon renders at exact slide size, slide px = world units
+const X0 = +q.get('x0') || 0, X1 = +q.get('x1') || 1320;  // ?x0=&x1= widen the ribbon canvas (slide x range) for wider screens
+renderer.setSize(FULL ? X1 - X0 : S, FULL ? 2868 : S); renderer.setPixelRatio(1);
+renderer.localClippingEnabled = true;
+renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
+scene.environmentIntensity = .5;
+const key = new THREE.DirectionalLight(0xfff1e0, 3.0); key.position.set(-3, 6, 5); key.castShadow = true;
+key.shadow.mapSize.set(4096, 4096); key.shadow.radius = 6; key.shadow.bias = -.0004; key.shadow.normalBias = .02;
+Object.assign(key.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: .1, far: 20 });
+const rim = new THREE.DirectionalLight(0xb9d0ff, 2.2); rim.position.set(4, 3, -5);
+const fill = new THREE.HemisphereLight(0xffffff, 0x5a6a90, .3);
+scene.add(key, rim, fill);
+
+// ---- helpers ----
+const plastic = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: .32, metalness: 0, clearcoat: .45, clearcoatRoughness: .35, ...o });
+const mesh = (geo, mat, pos = [0, 0, 0], rot = [0, 0, 0]) => {
+  const m = new THREE.Mesh(geo, mat); m.position.set(...pos); m.rotation.set(...rot); m.castShadow = m.receiveShadow = true; return m;
+};
+const rbox = (w, h, d, r, mat, pos, rot) => mesh(new RoundedBoxGeometry(w, h, d, 8, r), mat, pos, rot);
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+// smooth tube through points (closed loop or open polyline with rounded joints)
+function rail(points, r, mat, closed = false) {
+  const g = new THREE.Group();
+  if (closed) { g.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, true, 'catmullrom', .08), 240, r, 24, true), mat)); return g; }
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i], b = points[i + 1], c = mesh(new THREE.CylinderGeometry(r, r, a.distanceTo(b), 32), mat);
+    c.position.copy(a).add(b).multiplyScalar(.5); c.quaternion.setFromUnitVectors(V(0, 1, 0), b.clone().sub(a).normalize()); g.add(c);
+  }
+  points.forEach(p => g.add(mesh(new THREE.SphereGeometry(r, 32, 16), mat, [p.x, p.y, p.z])));
+  return g;
+}
+// rounded-rectangle loop in the XZ plane at height y
+function rrect(x0, x1, z0, z1, y, rad, n = 6) {
+  const pts = [], cs = [[x1 - rad, z1 - rad, 0], [x0 + rad, z1 - rad, 90], [x0 + rad, z0 + rad, 180], [x1 - rad, z0 + rad, 270]];
+  for (const [cx, cz, a0] of cs) for (let i = 0; i <= n; i++) { const a = (a0 + 90 * i / n) * Math.PI / 180; pts.push(V(cx + rad * Math.cos(a), y, cz + rad * Math.sin(a))); }
+  return pts;
+}
+function wheel(x, y, z, r, w) {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(r, r, w, 48), plastic(0x2a2e38, { roughness: .55, clearcoat: .1 }), [x, y, z], [Math.PI / 2, 0, 0]));
+  g.add(mesh(new THREE.TorusGeometry(r * .92, w * .18, 16, 48), plastic(0x2a2e38, { roughness: .55, clearcoat: .1 }), [x, y, z + w / 2 * Math.sign(z || 1)]));
+  g.add(mesh(new THREE.CylinderGeometry(r * .48, r * .48, w * 1.06, 40), plastic(0xe4e8ef, { metalness: .2, roughness: .25 }), [x, y, z], [Math.PI / 2, 0, 0]));
+  return g;
+}
+
+const root = new THREE.Group(); scene.add(root);
+let camPos = V(3, 2.4, 4.5), target = V(0, .6, 0), fov = 30;
+
+// kraft shipping box W×H×D sitting on y=0: tape over the seam, shipping label on the front (+z) face
+function buildParcel(W, H, D, labels = true) {
+  const g = new THREE.Group();
+  const kraft = new THREE.MeshPhysicalMaterial({ color: 0xc27f3e, roughness: .62, clearcoat: .12, sheen: .3, sheenColor: 0xffe2b8 });
+  g.add(rbox(W, H, D, Math.min(.1, W * .06), kraft, [0, H / 2, 0]));
+  g.add(rbox(W - .08, .02, .025, .01, new THREE.MeshPhysicalMaterial({ color: 0x8a5a2b, roughness: .8 }), [0, H + .005, 0]));
+  const tape = plastic(parseInt(q.get('t') || '1f5cff', 16), { roughness: .18, clearcoat: .9 }), tw = Math.min(.34, W * .22), flap = Math.min(.5, H * .4);
+  g.add(rbox(tw, .03, D + .05, .012, tape, [0, H + .01, 0]));
+  g.add(rbox(tw, flap, .03, .012, tape, [0, H - flap / 2 + .02, D / 2 + .01]), rbox(tw, flap, .03, .012, tape, [0, H - flap / 2 + .02, -D / 2 - .01]));
+  if (labels) {
+    const lw = Math.min(.62, W * .36), lh = lw * .68, lx = -W / 2 + lw / 2 + W * .06, ly = Math.min(H * .38, H - flap - lh / 2 - .08);
+    g.add(rbox(lw, lh, .025, .035, plastic(0xfbfbf7, { roughness: .5, clearcoat: .1 }), [lx, ly, D / 2 + .005]));
+    const ink = new THREE.MeshPhysicalMaterial({ color: 0x2b2f3a, roughness: .6 });
+    [.62, .48, .36].forEach((f, i) => g.add(rbox(lw * f, lh * .1, .012, .02, ink, [lx - lw / 2 + lw * f / 2 + lw * .1, ly + lh * .22 - i * lh * .2, D / 2 + .02])));
+    g.add(rbox(lw * .22, lw * .22, .012, .03, plastic(parseInt(q.get('a') || 'd8ff3e', 16)), [lx + lw * .3, ly + lh * .15, D / 2 + .02]));
+  }
+  return g;
+}
+
+if (model === 'box') {
+  const [W, H, D] = (q.get('dims') || '1.7,1.25,1.35').split(',').map(Number);
+  root.add(buildParcel(W, H, D));
+  root.rotation.y = THREE.MathUtils.degToRad(+(q.get('yaw') || 0));
+  const pitch = +(q.get('pitch') || 2.7);
+  camPos = V(2.9, pitch, 4.3); target = V(0, H / 2, 0); fov = 31;
+}
+
+if (model === 'cart') {
+  const metal = plastic(0xff3d1f, { roughness: .24, clearcoat: .7 });
+  const r = .055;
+  const top = rrect(-1.05, 1.0, -.66, .66, 1.05, .16), bot = rrect(-.62, .9, -.5, .5, .25, .14);
+  root.add(rail(top, r, metal, true), rail(bot, r, metal, true));
+  const lerpLoop = t => rrect(-1.05 + (.43) * t, 1.0 - .1 * t, -.66 + .16 * t, .66 - .16 * t, 1.05 - .8 * t, .155);
+  root.add(rail(lerpLoop(.5), r * .8, metal, true));
+  // vertical ribs on the long sides and the front
+  for (const t of [.12, .3, .48, .66, .84]) for (const s of [-1, 1]) {
+    const xt = -1.05 + 2.05 * t, xb = -.62 + 1.52 * t;
+    root.add(rail([V(xt, 1.05, .66 * s), V(xb, .25, .5 * s)], r * .8, metal));
+  }
+  for (const t of [-.3, 0, .3]) root.add(rail([V(-1.05, 1.05, t * 1.6), V(-.62, .25, t * 1.25)], r * .8, metal));
+  // handle
+  for (const s of [-1, 1]) root.add(rail([V(.95, 1.05, .66 * s), V(1.32, 1.42, .62 * s)], r, metal));
+  root.add(rail([V(1.32, 1.42, -.62), V(1.32, 1.42, .62)], r, metal));
+  root.add(mesh(new THREE.CylinderGeometry(.095, .095, .9, 40), plastic(0x2a2e38, { roughness: .45 }), [1.32, 1.42, 0], [Math.PI / 2, 0, 0]));
+  // chassis + wheels
+  for (const s of [-1, 1]) {
+    root.add(rail([V(-.55, .25, .48 * s), V(-.55, -.12, .48 * s), V(.92, -.12, .48 * s), V(.88, .25, .48 * s)], r, metal));
+    root.add(wheel(-.55, -.3, .48 * s, .17, .13), wheel(.92, -.3, .48 * s, .17, .13));
+  }
+  // goods in the basket
+  root.add(rbox(.62, .62, .55, .07, new THREE.MeshPhysicalMaterial({ color: 0xc27f3e, roughness: .62 }), [-.35, .7, -.08], [0, .3, .06]));
+  root.add(rbox(.12, .02, .57, .01, plastic(0x2f6bff), [-.35, 1.015, -.08], [0, .3, .06]));
+  root.add(rbox(.5, .78, .38, .1, plastic(0xb8ec00, { roughness: .35 }), [.35, .72, .12], [0, -.25, -.08]));
+  root.add(mesh(new THREE.TorusGeometry(.13, .025, 16, 40, Math.PI), plastic(0x2a2e38), [.35, 1.11, .12], [0, -.25, 0]));
+  root.add(mesh(new THREE.SphereGeometry(.2, 48, 32), plastic(0x2f6bff), [.05, .78, .38]));
+  root.rotation.y = -.15;
+  camPos = V(1.6, 2.3, 5.2); target = V(.1, .55, 0); fov = 32;
+}
+
+if (model === 'truck') {
+  const white = plastic(0xe9edf5, { roughness: .28 }), cab = plastic(0xff3d1f, { roughness: .24, clearcoat: .7 });
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x1b2333, roughness: .08, metalness: .3, clearcoat: 1 });
+  root.add(rbox(1.95, 1.3, 1.2, .14, white, [-.38, 1.0, 0]));                                  // cargo box
+  root.add(rbox(1.97, .26, 1.22, .1, plastic(0xb8ec00, { roughness: .3 }), [-.38, .78, 0]));   // lime band
+  root.add(rbox(.13, .13, .02, .06, plastic(0x2f6bff), [-.38, 1.32, .61]));                     // brand dot
+  root.add(rbox(1.0, 1.0, 1.15, .2, cab, [1.08, .78, 0]));                                      // cab
+  root.add(rbox(.07, .42, .92, .05, glass, [1.56, .98, 0]));                                    // windshield
+  for (const s of [-1, 1]) root.add(rbox(.5, .36, .04, .06, glass, [1.13, 1.0, .575 * s]));   // side windows
+  root.add(rbox(2.85, .26, 1.0, .1, plastic(0x2a2e38, { roughness: .5 }), [.12, .3, 0]));       // chassis
+  root.add(rbox(.12, .18, 1.1, .06, plastic(0xdfe3ea, { metalness: .3, roughness: .2 }), [1.6, .36, 0])); // bumper
+  for (const s of [-1, 1]) root.add(rbox(.04, .12, .2, .05, plastic(0xffe14d, { emissive: 0xffd23f, emissiveIntensity: .5 }), [1.585, .62, .38 * s]));
+  for (const s of [-1, 1]) root.add(wheel(-.85, .2, .5 * s, .3, .24), wheel(1.0, .2, .5 * s, .3, .24));
+  camPos = V(4.2, 2.5, 4.4); target = V(.15, .72, 0); fov = 30;
+}
+
+// flat panel between 4 coplanar corners (BL, BR, TR, TL) with rounded-rect windows; holes in normalised (s,t)
+function panel(BL, BR, TR, TL, holes, t, mat) {
+  const u = BR.clone().sub(BL).normalize();
+  const n = new THREE.Vector3().crossVectors(u, TL.clone().sub(BL)).normalize();
+  const v = new THREE.Vector3().crossVectors(n, u);
+  const to2 = P => { const d = P.clone().sub(BL); return new THREE.Vector2(d.dot(u), d.dot(v)); };
+  const [a, b, c, d] = [BL, BR, TR, TL].map(to2);
+  const bil = (s, q) => a.clone().multiplyScalar((1 - s) * (1 - q)).add(b.clone().multiplyScalar(s * (1 - q))).add(c.clone().multiplyScalar(s * q)).add(d.clone().multiplyScalar((1 - s) * q));
+  const rounded = (pts, r, path) => {
+    pts.forEach((p, i) => {
+      const prev = pts[(i + pts.length - 1) % pts.length], next = pts[(i + 1) % pts.length];
+      const p1 = p.clone().add(prev.clone().sub(p).setLength(r)), p2 = p.clone().add(next.clone().sub(p).setLength(r));
+      i ? path.lineTo(p1.x, p1.y) : path.moveTo(p1.x, p1.y); path.quadraticCurveTo(p.x, p.y, p2.x, p2.y);
+    });
+    path.closePath(); return path;
+  };
+  const shape = rounded([a, b, c, d], .05, new THREE.Shape());
+  for (const [s0, q0, s1, q1] of holes) shape.holes.push(rounded([bil(s0, q0), bil(s1, q0), bil(s1, q1), bil(s0, q1)], .07, new THREE.Path()));
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: true, bevelThickness: .025, bevelSize: .025, bevelSegments: 5, curveSegments: 12 });
+  geo.translate(0, 0, -t / 2);
+  const m = mesh(geo, mat);
+  m.applyMatrix4(new THREE.Matrix4().makeBasis(u, v, n).setPosition(BL));
+  return m;
+}
+const smooth = (pts, r, mat) => mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, 'catmullrom', .25), 200, r, 24, false), mat);
+
+if (model === 'cart2') {
+  const blue = plastic(ACCENT, { roughness: .3, clearcoat: .6 }), steel = new THREE.MeshPhysicalMaterial({ color: 0xc4cad6, metalness: .75, roughness: .28, clearcoat: .3 });
+  const yb = .42, yt = 1.22, B = [[-.82, -.52], [.82, -.52], [.82, .52], [-.82, .52]], T = [[-1.02, -.66], [1.02, -.66], [1.02, .66], [-1.02, .66]];
+  const pb = B.map(([x, z]) => V(x, yb, z)), pt = T.map(([x, z]) => V(x, yt, z));
+  const longWin = [[.07, .14, .33, .5], [.37, .14, .63, .5], [.67, .14, .93, .5], [.07, .56, .33, .86], [.37, .56, .63, .86], [.67, .56, .93, .86]];
+  const endWin = [[.1, .14, .46, .5], [.54, .14, .9, .5], [.1, .56, .46, .86], [.54, .56, .9, .86]];
+  root.add(panel(pb[0], pb[1], pt[1], pt[0], longWin, .07, blue));   // back long side (z-)
+  root.add(panel(pb[2], pb[3], pt[3], pt[2], longWin, .07, blue));   // front long side (z+)
+  root.add(panel(pb[1], pb[2], pt[2], pt[1], endWin, .07, blue));    // handle end (x+)
+  root.add(panel(pb[3], pb[0], pt[0], pt[3], endWin, .07, blue));    // nose end (x-)
+  root.add(rbox(1.7, .07, 1.1, .03, blue, [0, yb, 0]));             // floor
+  root.add(rail(rrect(-1.06, 1.06, -.7, .7, yt + .02, .16), .075, blue, true));   // rolled top lip
+  for (let i = 0; i < 4; i++) root.add(rail([pb[i], pt[i]], .045, blue));        // corner seams
+  // steel frame: handle down the back, under the basket, to the front casters
+  for (const s of [-1, 1]) {
+    root.add(smooth([V(1.42, 1.62, .58 * s), V(1.2, 1.25, .6 * s), V(1.0, .7, .55 * s), V(.86, .3, .5 * s), V(.6, .2, .5 * s), V(-.7, .2, .5 * s)], .05, steel));
+    root.add(rail([V(-.7, .2, .5 * s), V(-.7, .02, .5 * s)], .04, steel), rail([V(.72, .2, .5 * s), V(.72, .02, .5 * s)], .04, steel));
+  }
+  const grip = q.get('h') ? plastic(parseInt(q.get('h'), 16), { roughness: .3, clearcoat: .6 }) : blue;   // handle + hubs
+  root.add(mesh(new THREE.CylinderGeometry(.085, .085, 1.24, 40), grip, [1.42, 1.62, 0], [Math.PI / 2, 0, 0]));
+  for (const s of [-1, 1]) root.add(mesh(new THREE.CylinderGeometry(.095, .095, .06, 40), plastic(0x3a3f4a), [1.42, 1.62, .64 * s], [Math.PI / 2, 0, 0]));
+  const tire = plastic(0x3a3f4a, { roughness: .55, clearcoat: .1 });
+  for (const [x, s] of [[-.7, -1], [-.7, 1], [.72, -1], [.72, 1]]) {
+    root.add(mesh(new THREE.CylinderGeometry(.17, .17, .13, 48), tire, [x, -.1, .5 * s], [Math.PI / 2, 0, 0]));
+    root.add(mesh(new THREE.TorusGeometry(.155, .035, 16, 48), tire, [x, -.1, .5 * s + .065 * s]));
+    root.add(mesh(new THREE.CylinderGeometry(.095, .095, .15, 40), grip, [x, -.1, .5 * s], [Math.PI / 2, 0, 0]));
+  }
+  // goods peeking over the rim
+  if (!q.has('empty')) {
+  root.add(rbox(.72, .7, .62, .08, new THREE.MeshPhysicalMaterial({ color: 0xc27f3e, roughness: .62, clearcoat: .12 }), [-.35, .92, .02], [0, .25, .05]));
+  root.add(rbox(.14, .02, .64, .01, plastic(0xd8ff3e), [-.35, 1.275, .02], [0, .25, .05]));
+  root.add(rbox(.52, .82, .36, .1, plastic(0xff3d1f, { roughness: .3 }), [.38, .96, -.05], [0, -.3, -.07]));
+  root.add(mesh(new THREE.TorusGeometry(.14, .028, 16, 40, Math.PI), plastic(0x2a2e38), [.38, 1.37, -.05], [0, -.3, 0]));
+  }
+  camPos = V(-1.9, 3.4, -4.6); target = V(.1, .75, 0); fov = 30;
+}
+
+// toy delivery truck (cab faces +x); used alone (truck2) and in front of the globe
+function buildTruck(accent, streaks = true) {
+  const g = new THREE.Group();
+  const blue = plastic(accent, { roughness: .28, clearcoat: .6 }), dark = new THREE.MeshPhysicalMaterial({ color: 0x2f323b, roughness: .18, clearcoat: .9 });
+  const kraft = new THREE.MeshPhysicalMaterial({ color: 0xe2b77c, roughness: .6, clearcoat: .12, sheen: .3, sheenColor: 0xffe8c4 });
+  const kraftDark = new THREE.MeshPhysicalMaterial({ color: 0xcf9a55, roughness: .6, clearcoat: .1 });
+  g.add(rbox(2.95, .22, 1.05, .09, blue, [.05, .36, 0]));                          // flatbed
+  const glass = new THREE.Color(accent).getHSL({}).l < .3 ? plastic(0x8a91a1, { roughness: .15, clearcoat: .9 }) : dark;   // grey glass on dark cabs
+  g.add(rbox(1.05, .66, 1.04, .2, blue, [1.0, .74, 0]));                            // cab lower body
+  const top = rbox(.86, .7, 1.0, .24, blue, [.92, 1.26, 0]); top.rotation.z = -.12; g.add(top);   // cabin, leaning back
+  top.add(rbox(.05, .46, .82, .06, glass, [.425, .04, 0]));                            // windshield, on the cabin's leaning front face
+  for (const s of [-1, 1]) top.add(rbox(.42, .38, .04, .1, glass, [.02, .04, .5 * s]));    // side windows
+  for (const s of [-1, 1]) g.add(rbox(.16, .06, .03, .03, dark, [.78, .88, .53 * s]));  // door handles
+  g.add(rbox(.14, .18, 1.08, .07, plastic(0x2f323b, { roughness: .35 }), [1.55, .42, 0]));   // bumper
+  g.add(rbox(.04, .12, .36, .04, dark, [1.53, .72, 0]));                            // grille
+  const chrome = new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 1, roughness: .12 });
+  for (const s of [-1, 1]) {                                                            // round headlights
+    g.add(mesh(new THREE.CylinderGeometry(.11, .11, .08, 40), chrome, [1.53, .78, .33 * s], [0, 0, Math.PI / 2]));
+    g.add(mesh(new THREE.SphereGeometry(.065, 32, 16), plastic(0xfff3c4, { emissive: 0xffe9a0, emissiveIntensity: .35 }), [1.575, .78, .33 * s]));
+  }
+  g.add(rbox(1.6, 1.3, 1.0, .1, kraft, [-.42, 1.13, 0]));                            // cargo: a big parcel
+  g.add(rbox(.5, .03, 1.02, .015, kraftDark, [-.42, 1.79, 0]));                      // tape over the top
+  g.add(rbox(.5, .42, .03, .015, kraftDark, [-.42, 1.57, .51]));                     // tape flap down the side
+  g.add(rbox(.46, .24, .02, .03, plastic(0x2a2e38), [-.88, .72, .51]));              // barcode label
+  for (let i = 0; i < 8; i++) g.add(rbox(.018 + (i % 3) * .008, .15, .01, .004, plastic(0xffffff), [-1.04 + i * .045, .72, .523]));
+  g.add(rbox(.24, .24, .02, .04, plastic(0xe8394a), [-.5, .72, .51]));               // red sticker
+  g.add(mesh(new THREE.TorusGeometry(.055, .014, 12, 32), plastic(0xffffff), [-.5, .72, .525]));
+  const tire = plastic(0x34363e, { roughness: .5, clearcoat: .1 }), hub = plastic(0xf2f3f6, { roughness: .25 });
+  for (const [x, s] of [[-.82, -1], [-.82, 1], [1.0, -1], [1.0, 1]]) {
+    g.add(mesh(new THREE.CylinderGeometry(.31, .31, .24, 56), tire, [x, .2, .5 * s], [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.TorusGeometry(.29, .06, 16, 56), tire, [x, .2, .5 * s + .1 * s]));
+    g.add(mesh(new THREE.CylinderGeometry(.16, .16, .26, 48), hub, [x, .2, .5 * s], [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.SphereGeometry(.05, 24, 12), plastic(0xc9ccd4), [x, .2, .5 * s + .13 * s]));
+  }
+  if (streaks) {
+  const streak = plastic(0xf1f3fa, { roughness: .4, clearcoat: .2 });                  // speed lines
+  [[1.65, .55, .5], [1.35, .82, .3], [1.75, 1.12, .7], [1.2, 1.42, .4], [.4, .82, .14]].forEach(([x, y, len], i) => {
+    const c = mesh(new THREE.CapsuleGeometry(.07, len, 8, 24), streak, [-x - len / 2, y, .2], [0, 0, Math.PI / 2]);
+    g.add(c);
+  });
+  }
+  return g;
+}
+
+if (model === 'truck2') {
+  root.add(buildTruck(ACCENT));
+  root.rotation.y = .1;
+  camPos = V(3.3, 1.9, 4.7); target = V(.1, .9, 0); fov = 30;
+}
+
+if (model === 'globe') {
+  // low-poly earth: flat-shaded icosphere, each facet coloured land/ocean by noise at its centroid (+ slight tint jitter)
+  const R = 1.6, geo = new THREE.IcosahedronGeometry(R, 4), pos = geo.attributes.position, col = [];
+  const noise = new ImprovedNoise(), c = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3();
+  const ocean = [0x7cc8ff, 0x78c4fd, 0x80cbff].map(h => new THREE.Color(h)), land = [0xc8f43a, 0xc4f036, 0xccf640].map(h => new THREE.Color(h));
+  const isLand = v => noise.noise(v.x * 1.05 + 3.1, v.y * 1.05 + .7, v.z * 1.05 + 5.3) + .35 * noise.noise(v.x * 2.1, v.y * 2.1 + 9, v.z * 2.1) > .04;
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i); b.fromBufferAttribute(pos, i + 1); d.fromBufferAttribute(pos, i + 2);
+    c.copy(a).add(b).add(d).normalize();
+    const pal = isLand(c) ? land : ocean, k = pal[(i / 3) % 3 | 0], col3 = [k.r, k.g, k.b];
+    col.push(...col3, ...col3, ...col3);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  root.add(mesh(geo, new THREE.MeshPhysicalMaterial({ vertexColors: true, flatShading: true, roughness: .5, clearcoat: .35, clearcoatRoughness: .4 })));
+  // small map pins planted on the front hemisphere: tip touches the surface, body points away from the centre,
+  // flat face turned toward the camera
+  const pinShape = new THREE.Shape(), pr = .26;
+  pinShape.absarc(0, 0, pr, Math.PI * -.18, Math.PI * 1.18, false); pinShape.lineTo(0, -pr * 2.05); pinShape.closePath();
+  const hole = new THREE.Path(); hole.absarc(0, 0, pr * .42, 0, Math.PI * 2, true); pinShape.holes.push(hole);
+  const pinGeo = new THREE.ExtrudeGeometry(pinShape, { depth: .1, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 8, curveSegments: 48 });
+  pinGeo.translate(0, pr * 2.05 + .02, -.05);                 // tip at the origin
+  const pinMat = plastic(0xff7a2f, { roughness: .32, clearcoat: .6 }), toCam = V(.4, 1.1, 6.5).normalize();
+  [[-.68, .62, .5], [.74, .55, .5], [.02, .95, .46], [-.93, .12, .44], [.94, .02, .42]].forEach(([x, y, s]) => {
+    const n = V(x, y, Math.sqrt(Math.max(.05, 1 - x * x - y * y))).normalize();
+    const z = toCam.clone().sub(n.clone().multiplyScalar(toCam.dot(n))).normalize(), xx = new THREE.Vector3().crossVectors(n, z);
+    const m = mesh(pinGeo, pinMat); m.matrixAutoUpdate = false;
+    m.matrix.makeBasis(xx, n, z).scale(V(s, s, s)).setPosition(n.clone().multiplyScalar(R * .985)); root.add(m);
+  });
+  const truck = buildTruck(ACCENT, false); truck.scale.setScalar(.85); truck.position.set(-.6, -2.05, 1.6); truck.rotation.y = -.62; root.add(truck);
+  camPos = V(.4, 1.1, 6.5); target = V(0, -.25, 0); fov = 30;
+}
+
+// box truck (cab faces +x): tall cargo box, cab with big wrap windshield, short hood, square lights, bumper, fenders
+function buildBoxTruck(cabColor = 0xd8ff3e, boxColor = 0xf1f3f8) {
+  const g = new THREE.Group();
+  const cab = plastic(cabColor, { roughness: .28, clearcoat: .7 }), body = plastic(boxColor, { roughness: .3, clearcoat: .5 });
+  const dark = plastic(0x2a2e38, { roughness: .45, clearcoat: .2 }), glass = new THREE.MeshPhysicalMaterial({ color: 0x3a4152, roughness: .08, metalness: .2, clearcoat: 1 });
+  g.add(rbox(3.1, .22, 1.0, .08, dark, [-.05, .42, 0]));                                   // chassis
+  g.add(rbox(2.05, 1.5, 1.2, .14, body, [-.55, 1.3, 0]));                                  // cargo box
+  g.add(rbox(2.07, .16, 1.22, .07, cab, [-.55, .72, 0]));                                  // cargo base trim (cab colour)
+  g.add(rbox(.9, 1.12, 1.14, .2, cab, [.98, 1.02, 0]));                                    // cab
+  g.add(rbox(.42, .55, 1.12, .16, cab, [1.52, .72, 0]));                                   // short hood / nose
+  g.add(rbox(.05, .58, 1.0, .1, glass, [1.43, 1.24, 0]));                                 // windshield, flush on the cab front
+  for (const s of [-1, 1]) g.add(rbox(.46, .4, .04, .1, glass, [.98, 1.27, .565 * s]));   // side windows
+  for (const s of [-1, 1]) g.add(rbox(.04, .3, .14, .04, dark, [1.2, 1.32, .64 * s]));    // mirrors
+  g.add(rbox(.16, .2, 1.18, .07, plastic(0xe9edf4, { metalness: .3, roughness: .2 }), [1.74, .5, 0]));   // bumper
+  g.add(rbox(.04, .22, .5, .04, dark, [1.735, .76, 0]));                                    // grille
+  for (let i = 0; i < 3; i++) g.add(rbox(.02, .025, .44, .01, cab, [1.755, .69 + i * .07, 0]));
+  for (const s of [-1, 1]) g.add(rbox(.05, .14, .2, .04, plastic(0xfff6d6, { emissive: 0xffeaa0, emissiveIntensity: .4 }), [1.735, .78, .4 * s]));  // headlights
+  const tire = plastic(0x2f323b, { roughness: .5, clearcoat: .1 }), hub = plastic(0xd8ff3e, { roughness: .3, clearcoat: .6 });
+  for (const [x, s] of [[-1.0, -1], [-1.0, 1], [1.12, -1], [1.12, 1]]) {
+    g.add(mesh(new THREE.CylinderGeometry(.32, .32, .26, 56), tire, [x, .3, .5 * s], [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.TorusGeometry(.3, .06, 16, 56), tire, [x, .3, .5 * s + .11 * s]));
+    g.add(mesh(new THREE.CylinderGeometry(.17, .17, .28, 48), hub, [x, .3, .5 * s], [Math.PI / 2, 0, 0]));
+    g.add(mesh(new THREE.SphereGeometry(.05, 24, 12), dark, [x, .3, .5 * s + .14 * s]));
+    g.add(rbox(.78, .07, .3, .03, x > 0 ? cab : dark, [x, .66, .52 * s]));                // fender
+  }
+  return g;
+}
+
+if (model === 'truck3') {
+  root.add(buildBoxTruck(q.has('c') ? ACCENT : 0xd8ff3e, parseInt(q.get('b') || 'f1f3f8', 16)));   // ?c= cab, ?b= cargo box
+  if (q.has('speed')) {                                   // rounded speed streaks trailing behind the cargo box
+    const streak = plastic(parseInt(q.get('s') || 'd8ff3e', 16), { roughness: .35, clearcoat: .5 });   // ?s= streak colour
+    [[1.95, .7, .9], [2.2, 1.05, 1.3], [1.9, 1.42, .75], [2.35, 1.78, 1.1]].forEach(([x, y, len]) =>
+      root.add(mesh(new THREE.CapsuleGeometry(.085, len, 8, 24), streak, [-x - len / 2, y, .25], [0, 0, Math.PI / 2])));
+  }
+  root.rotation.y = q.has('speed') ? -.32 : -.5; camPos = V(1.2, 1.6, 5.6); target = V(.1, .9, 0); fov = 30;
+}
+
+if (model === 'earth') {
+  // clay earth like a 3D icon: real coastlines (Natural Earth 110m via world-atlas) rasterised to an equirectangular
+  // mask, blurred for soft rounded edges, used to raise + colour a dense sphere
+  const W = 4096, H = 2048, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const topo = await (await fetch('./node_modules/world-atlas/land-110m.json')).json();
+  const ctx = cv.getContext('2d'), proj = d3.geoEquirectangular().scale(W / (2 * Math.PI)).translate([W / 2, H / 2]);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); ctx.fillStyle = '#fff'; ctx.beginPath();
+  d3.geoPath(proj, ctx)(topojson.feature(topo, topo.objects.land)); ctx.fill();
+  const bl = document.createElement('canvas'); bl.width = W; bl.height = H; const bx = bl.getContext('2d');
+  bx.filter = 'blur(6px)'; bx.drawImage(cv, 0, 0);
+  const mask = bx.getImageData(0, 0, W, H).data, sample = (lon, lat) => {
+    const x = Math.min(W - 1, Math.max(0, ((lon + Math.PI) / (2 * Math.PI)) * W | 0)), y = Math.min(H - 1, Math.max(0, ((Math.PI / 2 - lat) / Math.PI) * H | 0));
+    return mask[(y * W + x) * 4] / 255;
+  };
+  const R = 1.6, geo = new THREE.SphereGeometry(R, 1024, 512), pos = geo.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).normalize();
+    const lat = Math.asin(v.y), lon = Math.atan2(v.x, v.z), h = THREE.MathUtils.smoothstep(sample(lon, lat), .22, .78);
+    v.multiplyScalar(R + h * .038); pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  // colour map at full map resolution: ocean gradient + land filled straight from the vector coastlines
+  const tc = document.createElement('canvas'); tc.width = W; tc.height = H; const tx = tc.getContext('2d');
+  const og = tx.createLinearGradient(0, 0, 0, H); og.addColorStop(0, '#5cb2ff'); og.addColorStop(.5, '#4a9ffc'); og.addColorStop(1, '#3888f2');
+  tx.fillStyle = og; tx.fillRect(0, 0, W, H);
+  tx.filter = 'blur(2px)'; tx.fillStyle = '#bff23c'; tx.beginPath(); d3.geoPath(proj, tx)(topojson.feature(topo, topo.objects.land)); tx.fill();
+  const map = new THREE.CanvasTexture(tc); map.colorSpace = THREE.SRGBColorSpace; map.wrapS = THREE.RepeatWrapping;
+  map.offset.x = .25; map.anisotropy = 16;                        // SphereGeometry u starts 90° west of our lon=0
+  const globe = mesh(geo, new THREE.MeshPhysicalMaterial({ map, roughness: .42, clearcoat: .55, clearcoatRoughness: .3 }));
+  const LON0 = -25, LAT0 = 22;                                   // Atlantic view: Americas left, Europe/Africa right
+  globe.rotation.order = 'XYZ'; globe.rotation.set(THREE.MathUtils.degToRad(LAT0), THREE.MathUtils.degToRad(-LON0), 0);
+  root.add(globe); globe.updateMatrixWorld();
+  const surf = (lonD, latD) => {                                  // world-space unit normal at a lon/lat on the globe
+    const L = THREE.MathUtils.degToRad(lonD), B = THREE.MathUtils.degToRad(latD);
+    return V(Math.cos(B) * Math.sin(L), Math.sin(B), Math.cos(B) * Math.cos(L)).applyQuaternion(globe.quaternion).normalize();
+  };
+  const toCam = V(.3, .9, 6.6).normalize();
+  const basis = (n, spin = 0) => {                                // y = surface normal, z = facing the camera, then spin about y
+    const z = toCam.clone().sub(n.clone().multiplyScalar(toCam.dot(n))).normalize().applyAxisAngle(n, spin);
+    return new THREE.Matrix4().makeBasis(new THREE.Vector3().crossVectors(n, z), n, z);
+  };
+  // map pins planted on the surface (tip on the ground, pointing at the centre)
+  const pinShape = new THREE.Shape(), pr = .26;
+  pinShape.absarc(0, 0, pr, Math.PI * -.18, Math.PI * 1.18, false); pinShape.lineTo(0, -pr * 2.05); pinShape.closePath();
+  const hole = new THREE.Path(); hole.absarc(0, 0, pr * .42, 0, Math.PI * 2, true); pinShape.holes.push(hole);
+  const pinGeo = new THREE.ExtrudeGeometry(pinShape, { depth: .1, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 8, curveSegments: 48 });
+  pinGeo.translate(0, pr * 2.05 + .02, -.05);
+  const pinMat = plastic(0xff7a2f, { roughness: .3, clearcoat: .6 });
+  // spread over land: N. America, Europe, Greenland, S. America, Africa, Asia limb
+  [[46, 64, .42], [-48, -6, .38]].forEach(([lon, lat, s]) => {   // two small pins: top of the globe + lower left
+    const n = surf(lon, lat), m = mesh(pinGeo, pinMat); m.matrixAutoUpdate = false;
+    m.matrix.copy(basis(n)).scale(V(s, s, s)).setPosition(n.clone().multiplyScalar(R + .05)); root.add(m);
+  });
+  // small parcels resting on the surface
+  [[-88, 24, .28, .4], [-100, 60, .25, -.3], [12, 22, .27, .7], [-64, -36, .25, 1.1], [6, -16, .25, .2]].forEach(([lon, lat, s, spin]) => {
+    const n = surf(lon, lat), b = buildParcel(1, .82, .9, false); b.matrixAutoUpdate = false;
+    b.matrix.copy(basis(n, spin)).scale(V(s, s, s)).setPosition(n.clone().multiplyScalar(R + .04)); root.add(b);
+  });
+  if (!q.has('notruck')) { const truck = buildBoxTruck(); truck.scale.setScalar(.72); truck.position.set(-.55, -1.95, 1.65); truck.rotation.y = -.55; root.add(truck); }
+  camPos = V(.3, .9, 6.6); target = V(0, -.2, 0); fov = 30;
+}
+
+if (model === 'trail') {
+  // glossy rounded speed bars (like 3D icon "motion lines"), rows of different lengths, pointing -x (motion is +x)
+  const mat = plastic(parseInt(q.get('c') || 'd8ff3e', 16), { roughness: .25, clearcoat: .8 }), r = .2;
+  const bars = q.get('v') === '2'                           // ?v=2: a different arrangement of the same bars
+    ? [[1.1, 1.0, .5], [.4, 1.0, -1.15], [1.6, .32, 0], [.7, -.36, .45], [1.25, -1.04, -.15]]
+    : [[.55, 1.25, 0], [1.25, .62, .25], [1.75, 0, -.2], [.42, -.62, -.55], [1.05, -.62, 1.2]];
+  bars.forEach(([len, y, x]) =>
+    root.add(mesh(new THREE.CapsuleGeometry(r, len, 12, 32), mat, [x - len / 2, y, 0], [0, 0, Math.PI / 2])));
+  camPos = V(.6, .5, 6); target = V(-.6, 0, 0); fov = 30;
+}
+
+if (model === 'ribbon') {
+  // a real 3D ribbon in slide-pixel space (x right, y down → world y = -y): flat lime band with thickness, its width
+  // kept roughly vertical so it wraps the phone like a sash, with a gentle twist toward both ends.
+  // ?part=back keeps z<0 (behind the phone), ?part=front keeps z>0 (in front of it).
+  const P = [[1560, 1040, -200], [1180, 1150, -330], [650, 1330, -380], [170, 1470, -260], [40, 1565, -40], [30, 1665, 160],
+             [240, 1805, 330], [620, 1965, 360], [920, 2145, 280], [1090, 2335, 160], [1160, 2460, 70]].map(([x, y, z]) => V(x, -y, z));
+  // wide canvas: carry the band on off the right edge. The first new point is 2*P0-P1 (exactly what Catmull-Rom
+  // extrapolates anyway), so the original stretch keeps its shape; twist stays keyed to the original stretch.
+  const L0 = new THREE.CatmullRomCurve3(P, false, 'centripetal').getLength();
+  if (X1 > 1320) P.unshift(V(2320, -820, -40), P[0].clone().multiplyScalar(2).sub(P[1]));
+  const curve = new THREE.CatmullRomCurve3(P, false, 'centripetal'), Lt = curve.getLength(), N = Math.round(1400 * Lt / L0), Wd = 128, Th = 9;
+  const pos = [], idx = [], up = V(0, 1, 0);
+  const frames = [...Array(N + 1)].map((_, i) => {
+    const c = curve.getPointAt(i / N), T = curve.getTangentAt(i / N), t = Math.max(0, (i / N * Lt - (Lt - L0)) / L0);
+    let B = up.clone().sub(T.clone().multiplyScalar(up.dot(T))).normalize();
+    // a full half-turn flip while crossing the front of the phone (shows the other face), softer turns at the ends
+    const twist = Math.PI * THREE.MathUtils.smoothstep(t, .5, .78) - .55 * Math.pow(Math.max(0, (.2 - t) / .2), 1.2) + .5 * Math.pow(Math.max(0, (t - .85) / .15), 1.3);
+    B.applyAxisAngle(T, twist);
+    const Nn = new THREE.Vector3().crossVectors(T, B).normalize();
+    return { c, B, Nn };
+  });
+  // four faces (top, bottom, two edges), each with its own vertices so edges stay crisp
+  const faces = [[1, 1, -1, 1], [-1, -1, 1, -1], [1, 1, 1, -1], [-1, 1, -1, -1]];   // (b0, n0) → (b1, n1) corner pairs
+  const col = [], faceCol = [new THREE.Color(0xdcff4a), new THREE.Color(0xb6e21c), new THREE.Color(0x98c20a), new THREE.Color(0x98c20a)];
+  for (const [fi, [b0, n0, b1, n1]] of faces.entries()) {
+    const base = pos.length / 3;
+    frames.forEach(({ c, B, Nn }) => {
+      for (const [bs, ns] of [[b0, n0], [b1, n1]]) { const v = c.clone().addScaledVector(B, bs * Wd / 2).addScaledVector(Nn, ns * Th / 2); pos.push(v.x, v.y, v.z); col.push(faceCol[fi].r, faceCol[fi].g, faceCol[fi].b); }
+    });
+    for (let i = 0; i < N; i++) { const a = base + i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setIndex(idx); geo.computeVertexNormals();
+  const part = q.get('part') || 'front';
+  const mat = new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: .3, clearcoat: .8, clearcoatRoughness: .2, iridescence: .35, iridescenceIOR: 1.4, sheen: .3, sheenColor: 0xffffff, side: THREE.DoubleSide,
+    clippingPlanes: [new THREE.Plane(V(0, 0, part === 'back' ? -1 : 1), 0)] });
+  const m = new THREE.Mesh(geo, mat); m.castShadow = m.receiveShadow = true; root.add(m);
+  key.position.set(-300, 2600, 2400); key.target.position.set(660, -1434, 0); scene.add(key.target);
+  Object.assign(key.shadow.camera, { left: -1600, right: 1600, top: 1600, bottom: -1600, near: 10, far: 8000 }); key.shadow.camera.updateProjectionMatrix();
+  rim.position.set(1800, -400, -1500);
+}
+
+// ---- generic glossy "3D icon" props for any kind of app: ?m=icon&shape=star&c=hex&c2=hex&yaw=deg ----
+// shapes: star heart bolt chat shield pin coin chart bell magnifier gift. c = main colour, c2 = detail colour.
+function roundedPoly(pts, r) {
+  const s = new THREE.Shape(), n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p = pts[i], a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n];
+    const da = Math.hypot(a[0] - p[0], a[1] - p[1]), db = Math.hypot(b[0] - p[0], b[1] - p[1]), k = Math.min(r, da / 2.2, db / 2.2);
+    const p1 = [p[0] + (a[0] - p[0]) / da * k, p[1] + (a[1] - p[1]) / da * k], p2 = [p[0] + (b[0] - p[0]) / db * k, p[1] + (b[1] - p[1]) / db * k];
+    i ? s.lineTo(...p1) : s.moveTo(...p1); s.quadraticCurveTo(p[0], p[1], ...p2);
+  }
+  s.closePath(); return s;
+}
+function puffy(shape, depth, bevel, mat) {   // soft extrusion with a fat rounded bevel = toy / 3D-icon look
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * .85, bevelSegments: 16, curveSegments: 64 });
+  g.center(); g.computeVertexNormals(); return mesh(g, mat);
+}
+if (model === 'icon') {
+  const shape = q.get('shape') || 'star', C = parseInt(q.get('c') || 'ffc83d', 16), C2 = parseInt(q.get('c2') || 'ffffff', 16);
+  const main = plastic(C, { roughness: .22, clearcoat: .8, clearcoatRoughness: .15 }), det = plastic(C2, { roughness: .3, clearcoat: .6 });
+  const front = z => z;   // detail parts sit on the +z face
+  if (shape === 'star') {
+    const pts = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .47 : 1; pts.push([r * Math.cos(a), r * Math.sin(a)]); }
+    root.add(puffy(roundedPoly(pts, .16), .32, .2, main));
+  }
+  if (shape === 'heart') {
+    const h = new THREE.Shape(); h.moveTo(0, -.95);
+    h.bezierCurveTo(-.25, -.62, -1.05, -.2, -1.0, .32); h.bezierCurveTo(-.96, .82, -.36, 1.02, 0, .58);
+    h.bezierCurveTo(.36, 1.02, .96, .82, 1.0, .32); h.bezierCurveTo(1.05, -.2, .25, -.62, 0, -.95);
+    root.add(puffy(h, .3, .26, main));
+  }
+  if (shape === 'bolt') root.add(puffy(roundedPoly([[.22, 1.1], [-.62, -.08], [-.06, -.08], [-.26, -1.1], [.62, .14], [.06, .14]], .07), .3, .14, main));
+  if (shape === 'chat') {
+    root.add(puffy(roundedPoly([[-1.1, .72], [1.1, .72], [1.1, -.5], [-.2, -.5], [-.62, -.92], [-.56, -.5], [-1.1, -.5]], .34), .34, .2, main));
+    [-.5, 0, .5].forEach(x => root.add(mesh(new THREE.SphereGeometry(.15, 32, 16), det, [x, .11, front(.44)])));
+  }
+  if (shape === 'shield') {
+    root.add(puffy(roundedPoly([[0, 1.08], [.9, .78], [.84, -.12], [0, -1.08], [-.84, -.12], [-.9, .78]], .28), .32, .18, main));
+    root.add(rail([V(-.4, .02, .44), V(-.1, -.3, .44), V(.44, .34, .44)], .1, det));
+  }
+  if (shape === 'pin') {
+    const pts = []; for (let i = 0; i <= 40; i++) { const t = i / 40, a = -Math.PI / 2 + t * Math.PI * 1.25; pts.push(new THREE.Vector2(Math.max(0, .78 * Math.cos(a)), .55 + .78 * Math.sin(a))); }
+    pts.unshift(new THREE.Vector2(0, -1.05)); pts.push(new THREE.Vector2(0, 1.33));
+    const prof = [new THREE.Vector2(0, -1.05)]; for (let i = 0; i <= 48; i++) { const a = -Math.PI * .28 + i / 48 * Math.PI * 0.78; prof.push(new THREE.Vector2(.78 * Math.cos(a), .55 + .78 * Math.sin(a))); } prof.push(new THREE.Vector2(0, 1.33));
+    root.add(mesh(new THREE.LatheGeometry(prof, 96), main));
+    root.add(mesh(new THREE.SphereGeometry(.3, 48, 24), det, [0, .58, .62]));
+  }
+  if (shape === 'coin') {
+    const prof = [[0, -.15], [.88, -.15], [1, -.06], [1, .06], [.88, .15], [0, .15]].map(([x, y]) => new THREE.Vector2(x, y));
+    root.add(mesh(new THREE.LatheGeometry(prof, 128), plastic(parseInt(q.get('c') || 'f5b82e', 16), { metalness: .35, roughness: .25, clearcoat: .7 }), [0, 0, 0], [Math.PI / 2, 0, 0]));
+    root.add(mesh(new THREE.TorusGeometry(.74, .05, 24, 128), plastic(parseInt(q.get('c') || 'f5b82e', 16), { metalness: .35, roughness: .2 }), [0, 0, .16]));
+    const pts = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? .19 : .42; pts.push([r * Math.cos(a), r * Math.sin(a)]); }
+    const st = puffy(roundedPoly(pts, .06), .06, .05, det); st.position.z = .2; root.add(st);
+  }
+  if (shape === 'chart') {
+    [[-.62, .9], [0, 1.45], [.62, 2.1]].forEach(([x, h], i) => root.add(rbox(.46, h, .46, .16, i === 2 ? main : plastic(C, { roughness: .3, clearcoat: .6, color: new THREE.Color(C).lerp(new THREE.Color(0xffffff), .35 - i * .12) }), [x, h / 2 - 1.05, 0])));
+  }
+  if (shape === 'bell') {
+    const prof = [[0, 1.0], [.12, 1.0], [.2, .9], [.42, .68], [.52, .2], [.6, -.28], [.82, -.55], [.9, -.66], [.86, -.72], [0, -.72]].map(([x, y]) => new THREE.Vector2(x, y));
+    root.add(mesh(new THREE.LatheGeometry(new THREE.SplineCurve(prof).getPoints(80), 128), main));
+    root.add(mesh(new THREE.TorusGeometry(.13, .055, 20, 48), main, [0, 1.06, 0]));
+    root.add(mesh(new THREE.SphereGeometry(.2, 40, 20), det, [0, -.82, 0]));
+  }
+  if (shape === 'magnifier') {
+    root.add(mesh(new THREE.TorusGeometry(.7, .17, 40, 128), main, [-.2, .25, 0]));
+    root.add(mesh(new THREE.CylinderGeometry(.68, .68, .06, 96), new THREE.MeshPhysicalMaterial({ color: 0xdff3ff, transmission: .85, roughness: .05, thickness: .2, ior: 1.4, clearcoat: 1 }), [-.2, .25, 0], [Math.PI / 2, 0, 0]));
+    const hnd = mesh(new THREE.CapsuleGeometry(.18, .9, 16, 40), det, [.6, -.62, 0], [0, 0, Math.PI / 4]); root.add(hnd);
+  }
+  if (shape === 'gift') {
+    root.add(rbox(1.6, 1.25, 1.6, .14, main, [0, -.35, 0]), rbox(1.78, .36, 1.78, .12, main, [0, .42, 0]));
+    root.add(rbox(.32, 1.68, 1.82, .06, det, [0, -.12, 0]), rbox(1.82, 1.68, .32, .06, det, [0, -.12, 0]));
+    [-1, 1].forEach(sd => root.add(mesh(new THREE.TorusGeometry(.3, .1, 24, 64), det, [sd * .3, .78, 0], [0, 0, sd * .5])));
+  }
+  root.rotation.set(THREE.MathUtils.degToRad(+(q.get('pitch') || 8)), THREE.MathUtils.degToRad(+(q.get('yaw') || -24)), THREE.MathUtils.degToRad(+(q.get('roll') || 0)));
+  key.position.set(-3, 5, 6); camPos = V(0, .4, 6); target = V(0, 0, 0); fov = 30;
+}
+
+const camera = FULL ? new THREE.OrthographicCamera(X0, X1, 0, -2868, 1, 10000) : new THREE.PerspectiveCamera(fov, 1, .1, 100);
+if (FULL) camera.position.set(0, 0, 5000); else { camera.position.copy(camPos); camera.lookAt(target); }
+// frame the model: fit its bounding sphere into the view
+if (!FULL) {
+const sph = new THREE.Box3().setFromObject(root).getBoundingSphere(new THREE.Sphere());
+const dist = sph.radius / Math.sin(THREE.MathUtils.degToRad(fov / 2)) * 1.02;
+camera.position.copy(sph.center.clone().add(camPos.clone().sub(target).normalize().multiplyScalar(dist)));
+camera.lookAt(sph.center);
+}
+renderer.render(scene, camera);
+document.body.dataset.done = '1';
+</script>
+</body></html>

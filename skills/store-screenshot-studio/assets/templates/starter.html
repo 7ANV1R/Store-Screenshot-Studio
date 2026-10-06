@@ -1,0 +1,151 @@
+<!doctype html>
+<!-- STARTER · "Electric" archetype: every building block the engine has, wired to placeholder screens (@0, @1 …),
+     placeholder copy and the prop pack from `studio props` (assets/3d/star.png, magnifier.png, box.png …). Copy this into a round folder, rename it after its direction, then rewrite tokens, copy, screen
+     names, poses and props. One strip of 7 slides, each 1320x2868, slide i at left:i*1320px. -->
+<html style="--n:7"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400..800&display=block" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* ---- palette: paste one palette's "css" from plan/palettes.json here (studio palette) ---- */
+  :root{--base:#1d4cf2;--base2:#0e2fc4;--glow:#7aa0ff;--accent:#d8ff3e;--on-base:#ffffff;--on-accent:#08123f;--ink:#08123f}
+  .slide{--u:1;background:
+      radial-gradient(calc(900px*var(--u)) calc(1200px*var(--u)) at 70% 38%,color-mix(in srgb,var(--glow) 60%,transparent),transparent 70%),
+      linear-gradient(color-mix(in srgb,var(--on-base) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      linear-gradient(90deg,color-mix(in srgb,var(--on-base) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      linear-gradient(170deg,var(--base),var(--base2))}
+  .slide.shift{background:   /* same family, glow moved: breaks repetition without breaking the set */
+      radial-gradient(calc(1000px*var(--u)) calc(1200px*var(--u)) at 25% 70%,color-mix(in srgb,var(--glow) 55%,transparent),transparent 70%),
+      linear-gradient(color-mix(in srgb,var(--on-base) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      linear-gradient(90deg,color-mix(in srgb,var(--on-base) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      linear-gradient(200deg,var(--base2),var(--base))}
+  .slide.alt{background:     /* one inverted slide (accent background) gives the set a beat */
+      radial-gradient(calc(900px*var(--u)) calc(1100px*var(--u)) at 60% 60%,rgba(255,255,255,.5),transparent 70%),
+      linear-gradient(color-mix(in srgb,var(--on-accent) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      linear-gradient(90deg,color-mix(in srgb,var(--on-accent) 6%,transparent) 2px,transparent 2px) 0 0/calc(120px*var(--u)) calc(120px*var(--u)),
+      var(--accent)}
+  .h{font:800 158px/.93 "Bricolage Grotesque";font-variation-settings:"opsz" 96;letter-spacing:-.052em;color:var(--on-base)}
+  .alt .h{color:var(--on-accent)}
+  .mark{display:inline-block;background:var(--accent);color:var(--on-accent);padding:0 .14em .04em;border-radius:.2em;transform:rotate(-2.5deg);margin-left:-.06em}
+  .alt .mark{background:var(--on-accent);color:var(--accent)}
+  .lt{color:var(--accent)}
+  .sub{font:500 48px/1.28 Inter;letter-spacing:-.02em;color:color-mix(in srgb,var(--on-base) 85%,transparent)}
+  .alt .sub{color:color-mix(in srgb,var(--on-accent) 78%,transparent)}
+  .logo{position:absolute;left:104px;top:170px;height:72px}
+  .award>b{font:700 34px/1.12 Inter;letter-spacing:-.01em;color:var(--on-base)}
+  .award>b em{font-style:normal;color:var(--accent)}
+  .award>b.stat{margin-top:-4%}
+  .stat .big{display:block;font:800 190px/1 "Bricolage Grotesque";letter-spacing:-.055em;color:var(--on-base)}
+  .stat .lbl{display:block;margin-top:14px;font:700 32px/1.32 Inter;letter-spacing:.14em;color:var(--accent)}
+  .seal>b{font:800 56px/.88 "Bricolage Grotesque";letter-spacing:-.045em;color:var(--on-accent)}
+  .obj{position:absolute;filter:drop-shadow(0 38px 38px rgba(2,8,48,.42))}
+  .alt .obj{filter:drop-shadow(0 38px 38px rgba(40,60,0,.34))}
+  .obj.bg{filter:blur(12px) drop-shadow(0 24px 24px rgba(2,8,48,.3));opacity:.92}
+  .float{box-shadow:0 70px 110px -30px rgba(4,12,60,.65),0 22px 40px -10px rgba(4,12,60,.35)}
+  .tape{font:800 60px/1 "Bricolage Grotesque";letter-spacing:-.01em;text-transform:uppercase;height:124px;padding:0 30px;gap:34px}
+  .tape.solid{background:var(--accent);color:var(--on-accent);box-shadow:0 30px 60px -18px rgba(2,8,48,.55)}
+  .tape.blur{filter:blur(5px);opacity:.85}
+  .tape i{font-style:normal;opacity:.55}
+</style>
+<script src="../../screens/screens.js"></script>
+</head><body>
+
+<!-- 1 · HERO: logo, 3-line headline with one highlighted word, two laurels, tilted phone bleeding off the bottom,
+     one blurred prop behind, one sticker seal in a corner -->
+<div class="slide" style="left:0">
+  <img class="logo" src="../../assets/brand/logo.svg" alt="">
+  <div class="copy" style="top:330px">
+    <div class="h">Headline that<br>sells the<br><span class="mark">outcome.</span></div>
+    <div class="sub">One short line on what the app does for them.</div>
+  </div>
+  <div class="award" style="left:190px;top:1015px;width:440px;height:232px"><svg data-laurel="var(--on-base)"></svg><b>Short proof,<br><em>line two</em></b></div>
+  <div class="award" style="left:690px;top:1015px;width:440px;height:232px"><svg data-laurel="var(--on-base)"></svg><b>Second proof,<br><em>line two</em></b></div>
+  <img class="obj bg" data-pin="r" src="../../assets/3d/star.png" style="left:1000px;top:1250px;width:400px;transform:rotate(14deg)">
+  <div class="phone" data-src="@0" data-w="1040" data-tilt="10,-22,8" data-vc="660" style="left:140px;top:1380px"></div>
+  <div class="seal" data-pin="l" style="left:40px;top:2470px;width:330px;height:330px;transform:rotate(-12deg)"><svg data-seal="var(--accent)" data-ink="var(--on-accent)" data-ring="WORD • WORD • WORD • WORD • "></svg><b>Two<br>words</b></div>
+  <div class="grain"></div>
+</div>
+
+<!-- 2 · FLAT PHONE + TAPES: one sharp tape crossing over the phone's lower corner, one blurred tape behind, one 3D prop -->
+<div class="slide" style="left:1320px">
+  <div class="copy" style="top:170px">
+    <div class="h">Three short<br>beats here.<br><span class="lt">Payoff.</span></div>
+    <div class="sub">Plain benefit, one sentence.</div>
+  </div>
+  <div class="tape solid blur" style="left:-290px;top:1938px;width:1900px;transform:rotate(-28.5deg)">Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word</div>
+  <div class="phone" data-src="@1" data-w="1060" style="left:130px;top:900px"></div>
+  <img class="obj" src="../../assets/3d/magnifier.png" style="left:850px;top:1110px;width:440px;transform:rotate(-6deg)">
+  <div class="tape solid" style="left:-58px;top:2519px;width:1700px;transform:rotate(-28.5deg)">Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word <i>✦</i> Word</div>
+  <div class="grain"></div>
+</div>
+
+<!-- 3 · TILTED, FULLY VISIBLE PHONE + one UI piece lifted off the glass in the phone's own 3D space + 3D prop -->
+<div class="slide" style="left:2640px">
+  <div class="copy" style="top:190px">
+    <div class="h">Two-line<br>headline <span class="mark">here.</span></div>
+    <div class="sub">Benefit for the person reading.</div>
+  </div>
+  <img class="obj bg" data-pin="l" src="../../assets/3d/box.png" style="left:-30px;top:2360px;width:470px;transform:rotate(-10deg)">
+  <div class="phone" data-src="@2" data-w="860" data-tilt="10,-22,8" data-vc="660" style="left:230px;top:760px">
+    <!-- data-crop = screen x y w h radius in SOURCE pixels: pick a real button/card from the screen -->
+    <div class="lift" data-flat data-crop="@2 60 2300 1086 160 40" data-z="60" data-scale="1.12"></div>
+  </div>
+  <img class="obj" src="../../assets/3d/box.png" style="left:930px;top:1520px;width:360px;transform:rotate(9deg)">
+  <div class="grain"></div>
+</div>
+
+<!-- 4 · INVERTED SLIDE: accent background, flat phone in a dark band colour, brand-colour seal, one big prop -->
+<div class="slide alt" style="left:3960px">
+  <div class="copy" style="top:190px">
+    <div class="h">Headline on<br>the accent<br><span class="mark">slide.</span></div>
+    <div class="sub">Benefit for the person reading.</div>
+  </div>
+  <div class="phone blue" data-src="@3" data-w="1000" style="left:160px;top:1000px"></div>
+  <div class="seal" data-pin="l" style="left:30px;top:2450px;width:300px;height:300px;transform:rotate(-10deg)"><svg data-seal="var(--base)" data-ink="var(--on-base)" data-ring="WORD • WORD • WORD • "></svg>
+    <b><svg viewBox="0 0 24 24" style="width:100px;height:100px;display:block"><path d="M5 12.5l4.2 4.2L19 7" fill="none" style="stroke:var(--on-base)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg></b></div>
+  <img class="obj" src="../../assets/3d/shield.png" style="left:910px;top:1640px;width:400px;transform:rotate(12deg)">
+  <div class="grain" style="--grain:.12"></div>
+</div>
+
+<!-- 5 · MIRRORED TILT + motion: two thick product cards (crops with real depth) with lime trails, racing toward a prop -->
+<div class="slide" style="left:5280px">
+  <div class="copy" style="top:190px">
+    <div class="h">Short claim.<br><span class="lt">Big result.</span></div>
+    <div class="sub">Benefit in plain words,<br>two lines at most.</div>
+  </div>
+  <div class="phone" data-src="@4" data-w="840" data-tilt="10,22,-8" data-vc="590" style="left:230px;top:820px"></div>
+  <img class="abs" src="../../assets/3d/trail.png" style="left:896px;top:1712px;width:116px;transform:rotate(55deg);filter:drop-shadow(0 12px 14px rgba(2,8,48,.35))">
+  <img class="abs" src="../../assets/3d/trail2.png" style="left:1078px;top:1990px;width:92px;transform:rotate(55deg);filter:drop-shadow(0 12px 14px rgba(2,8,48,.35))">
+  <div data-crop="@4 100 600 214 214 30" data-w="170" data-thick="22" data-edge="#cfcac4" data-pose="16,-20,10" style="left:952px;top:1790px"></div>
+  <div data-crop="@4 100 1210 214 214 30" data-w="150" data-thick="20" data-edge="#2b282e" data-pose="14,-16,-8" style="left:1118px;top:2060px"></div>
+  <img class="obj" src="../../assets/3d/bolt.png" style="left:900px;top:2240px;width:330px;transform:rotate(8deg)">
+  <div class="grain"></div>
+</div>
+
+<!-- 6 · SHIFTED GLOW: tilted phone, one card floated off the screen (flat, elevated), prop at the lower right -->
+<div class="slide shift" style="left:6600px">
+  <div class="copy" style="top:190px">
+    <div class="h">Two-line<br>headline <span class="mark">now.</span></div>
+    <div class="sub">Benefit for the person reading.</div>
+  </div>
+  <div class="phone" data-src="@5" data-w="860" data-tilt="10,-22,8" data-vc="580" style="left:230px;top:760px"></div>
+  <div class="float" data-crop="@5 48 1132 1110 348 40" data-w="1000" style="left:90px;top:1500px;transform:rotate(-2deg)"></div>
+  <img class="obj" src="../../assets/3d/chart.png" style="left:900px;top:1960px;width:380px;transform:rotate(6deg)">
+  <div class="grain"></div>
+</div>
+
+<!-- 7 · TRUST CLOSE: centred copy with inline icons, one big stat in a laurel, phone, corner seal -->
+<div class="slide" style="left:7920px">
+  <div class="copy c" style="top:190px">
+    <div class="h" style="font-size:128px">Closing line<br>with a <span class="mark">promise.</span></div>
+    <div class="sub">Who is behind it, in one plain sentence.</div>
+  </div>
+  <div class="award" style="left:190px;top:650px;width:940px;height:494px"><svg data-laurel="var(--accent)"></svg>
+    <b class="stat"><span class="big">10K+</span><span class="lbl">REAL, VERIFIABLE<br>NUMBER HERE</span></b></div>
+  <div class="phone night" data-src="@6" data-w="940" data-tilt="10,22,-8" data-vc="660" style="left:190px;top:1220px"></div>
+  <div class="seal" data-pin="r" style="left:950px;top:2460px;width:330px;height:330px;transform:rotate(10deg)"><svg data-seal="var(--accent)" data-ink="var(--on-accent)" data-ring="WORD • WORD • WORD • "></svg><b style="font-size:44px">Two<br>words</b></div>
+  <div class="grain"></div>
+</div>
+
+<script src="shared.js"></script>
+</body></html>

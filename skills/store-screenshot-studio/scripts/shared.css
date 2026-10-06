@@ -1,0 +1,95 @@
+/* Shared canvas + iPhone 17 Pro mockup. One slide = 1320x2868 (App Store 6.9"), authored once; layout.js adapts it. */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:calc(1320px * var(--n));height:2868px;overflow:hidden}
+body{position:relative;will-change:transform;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.slide{position:absolute;top:0;width:1320px;height:2868px;overflow:hidden}
+.abs{position:absolute}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:var(--grain,.08);mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- phone ---------- */
+.phone{
+  --b:calc(var(--w)*.0125); --k:calc(var(--w)*.0215);
+  --sw:calc(var(--w) - 2*(var(--b) + var(--k)));
+  --sh:calc(var(--sw)*var(--ar,2.174129));
+  --h:calc(var(--sh) + 2*(var(--b) + var(--k)));
+  --R:calc(var(--w)*.168);
+  --band1:#f4f5f7; --band2:#c9ccd2; --band3:#8e939b; --band4:#e6e8ec;   /* silver */
+  position:absolute;width:var(--w);height:var(--h);transform-style:preserve-3d
+}
+.phone.blue  {--band1:#6f7f9c;--band2:#33415c;--band3:#1b2436;--band4:#4d5d7c}
+.phone.orange{--band1:#ffb07a;--band2:#f0712c;--band3:#b8420d;--band4:#ff9152}
+.phone.night {--band1:#5a5d66;--band2:#2a2c31;--band3:#121315;--band4:#3d4047}
+
+.face{position:absolute;inset:0;border-radius:var(--R);
+  background:linear-gradient(135deg,var(--band1) 0%,var(--band2) 18%,var(--band3) 48%,var(--band2) 78%,var(--band4) 100%);
+  box-shadow:var(--shadow,0 80px 140px -30px rgba(0,0,0,.45),0 30px 50px -20px rgba(0,0,0,.35))}
+.face::before{content:"";position:absolute;inset:0;border-radius:inherit;   /* chamfer highlights */
+  box-shadow:inset 0 0 0 calc(var(--w)*.0018) rgba(255,255,255,.55),inset 0 0 0 calc(var(--w)*.0045) rgba(0,0,0,.22)}
+.bezel{position:absolute;inset:var(--b);border-radius:calc(var(--R) - var(--b));background:#050506;
+  box-shadow:inset 0 0 0 calc(var(--w)*.0015) rgba(255,255,255,.08)}
+.screen{position:absolute;inset:calc(var(--b) + var(--k));border-radius:calc(var(--R) - var(--b) - var(--k));
+  overflow:hidden;background:#f5f5f5;font-size:calc(var(--sw)/100)}
+.screen>img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.island{position:absolute;top:2.6em;left:50%;width:30.5em;height:9em;margin-left:-15.25em;border-radius:5em;background:#000;z-index:3}
+.island::after{content:"";position:absolute;right:2.9em;top:2.7em;width:3.6em;height:3.6em;border-radius:50%;
+  background:radial-gradient(circle at 38% 35%,#3b4a6b 0,#141a2a 35%,#05060a 70%)}
+.sb{position:absolute;top:0;left:0;right:0;height:14.6em;z-index:2;display:grid;grid-template-columns:1fr 30.5em 1fr;align-items:center;
+  color:#000;font:600 1em/1 -apple-system,"SF Pro Text",system-ui,sans-serif;letter-spacing:-.01em}
+.sb>span:first-child{font-size:4.35em;text-align:center;padding-left:.6em}
+.sb.light{color:#fff}
+.sb .ic{grid-column:3;font-size:4.35em;display:flex;gap:.28em;align-items:center;justify-content:center;padding-right:.35em}
+.sb svg{height:.7em;width:auto;display:block}
+.sb svg.bat{height:.78em}
+.glare{position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:linear-gradient(118deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.05) 28%,rgba(255,255,255,0) 42%)}
+
+/* side buttons (flat view) */
+.btn{position:absolute;width:calc(var(--w)*.0065);border-radius:calc(var(--w)*.004);
+  background:linear-gradient(90deg,var(--band3),var(--band1) 45%,var(--band2))}
+.btn.l{left:calc(var(--w)*-.0055)} .btn.r{right:calc(var(--w)*-.0055)}
+
+/* 3D extrusion */
+.ext{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d}
+.ext i{position:absolute;left:0;top:0;display:block}
+.ext b{position:absolute;display:block}
+.back{position:absolute;inset:0;border-radius:var(--R);background:var(--band3)}
+.pshadow{position:absolute;inset:0;border-radius:var(--R);background:rgba(0,0,0,var(--ps,.45));filter:blur(var(--psb,calc(var(--w)*.06)))}
+
+/* crops of real UI (popped out of the screen) */
+[data-crop]{position:absolute;background-repeat:no-repeat}
+
+/* sticker: starburst svg + centred label */
+.burst{position:absolute;display:grid;place-items:center}
+.burst>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.burst>b{position:relative;text-align:center}
+
+/* sticker seal: svg + centred label */
+.seal{position:absolute;display:grid;place-items:center}
+.seal>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 26px 34px rgba(0,0,0,.35))}
+.seal>b{position:relative;text-align:center}
+/* award badge: laurel + two short lines */
+.award{position:absolute;display:grid;place-items:center}
+.award>svg{position:absolute;inset:0;width:100%;height:100%}
+.award>b{position:relative;text-align:center;margin-top:-6%}
+
+/* tape strip: rotated band of repeating words, sits behind the phone */
+.tape{position:absolute;white-space:nowrap;overflow:hidden;display:flex;align-items:center}
+/* price tag sticker (svg shape + label) */
+.ptag{position:absolute;display:grid;place-items:center}
+.ptag>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 22px 26px rgba(0,0,0,.3))}
+.ptag>b{position:relative;padding-left:14%}
+
+/* headline + subtitle block: one consistent gap everywhere */
+.copy{position:absolute;left:104px;right:80px}
+.copy>.h,.copy>.sub{position:static;left:auto;right:auto}
+.copy>.sub{margin-top:38px}
+.copy.c{left:40px;right:40px;text-align:center}
+
+/* starburst sticker */
+.burst{position:absolute;display:grid;place-items:center}
+.burst>svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 26px 34px rgba(0,0,0,.35))}
+.burst>b{position:relative;text-align:center}
+/* thick product card: white border + stacked edge = a slab with real depth */
+.slab{box-shadow:0 0 0 10px #fff,2px 3px 0 10px #eef0f5,4px 6px 0 10px #e1e5ec,6px 9px 0 10px #d4d9e2,8px 12px 0 10px #c7cdd8,10px 15px 0 10px #bac1cd,
+  22px 60px 60px 0 rgba(2,8,48,.45)}

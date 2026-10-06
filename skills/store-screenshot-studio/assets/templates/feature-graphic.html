@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Google Play feature graphic. AUTHORED AT 3x (3072x1500, every px value = 3x the 1024x500 look); `studio final`
+     renders it at device scale 1 and downsamples to 1024x500. Never author at 1024x500 or use deviceScaleFactor 3:
+     small 3D phones come out blurry (see references/rendering-gotchas.md).
+     Match the chosen direction: copy its tokens, fonts, headline style and one signature prop. Keep text left,
+     phones right, nothing important within 120px (3x) of the edges. -->
+<html style="--n:1"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400..800&display=block" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  :root{--base:#1d4cf2;--base2:#0e2fc4;--glow:#7aa0ff;--accent:#d8ff3e;--on-base:#ffffff;--on-accent:#08123f;--ink:#08123f}   /* same palette as the locked set */
+  html,body{width:3072px;height:1500px}
+  .slide{width:3072px;height:1500px;background:
+      radial-gradient(1560px 1260px at 76% 40%,color-mix(in srgb,var(--glow) 60%,transparent),transparent 70%),
+      linear-gradient(color-mix(in srgb,var(--on-base) 6%,transparent) 4.5px,transparent 4.5px) 0 0/168px 168px,
+      linear-gradient(90deg,color-mix(in srgb,var(--on-base) 6%,transparent) 4.5px,transparent 4.5px) 0 0/168px 168px,
+      linear-gradient(170deg,var(--base),var(--base2))}
+  .grain{background-size:900px 900px}
+  .logo{position:absolute;left:192px;top:288px;height:120px}
+  .h{position:absolute;left:186px;top:486px;font:800 228px/.93 "Bricolage Grotesque";font-variation-settings:"opsz" 96;letter-spacing:-.052em;color:var(--on-base)}
+  .mark{display:inline-block;background:var(--accent);color:var(--on-accent);padding:0 .14em .04em;border-radius:.2em;transform:rotate(-2.5deg);margin-left:-.06em}
+  .sub{position:absolute;left:192px;top:1002px;font:500 69px/1.3 Inter;letter-spacing:-.02em;color:color-mix(in srgb,var(--on-base) 85%,transparent)}
+  .obj{position:absolute;filter:drop-shadow(0 48px 48px rgba(2,8,48,.42))}
+  .obj.bg{filter:blur(15px) drop-shadow(0 30px 30px rgba(2,8,48,.3));opacity:.92}
+</style>
+<script src="../../screens/screens.js"></script>
+</head><body>
+<div class="slide" style="left:0">
+  <img class="logo" src="../../assets/brand/logo.svg" alt="">
+  <div class="h">Hero headline,<br>two <span class="mark">lines.</span></div>
+  <div class="sub">The same subtitle as screenshot 1.</div>
+  <img class="obj bg" src="../../assets/3d/star.png" style="left:2790px;top:-120px;width:450px;transform:rotate(14deg)">
+  <!-- phones ~800-900px wide here (= the screenshots' scale); data-persp scales with width (4200 per 860px) -->
+  <div class="phone" data-src="@1" data-w="804" data-tilt="10,22,-8" data-persp="3930" data-vc="2652" style="left:0;top:150px"></div>
+  <div class="phone" data-src="@0" data-w="900" data-tilt="10,-22,8" data-persp="4395" data-vc="2166" style="left:0;top:336px"></div>
+  <img class="obj" src="../../assets/3d/box.png" style="left:2652px;top:1056px;width:366px;transform:rotate(9deg)">
+  <div class="grain"></div>
+</div>
+<script src="shared.js"></script>
+<script>document.fonts.ready.then(() => document.body.dataset.ready = 1)</script>
+</body></html>
