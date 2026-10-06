@@ -25,7 +25,8 @@ You give it your screenshots. It gives you a finished, store-ready set.
 Most screenshot tools give you a template. The result looks like every other app in the store.
 
 This skill works like a designer. It reads about your app, picks your best screens and writes short headlines.
-It builds colours from your brand. Then it shows you four different design directions to choose from.
+It builds colours from your brand. Then it invents four concepts from your app's own world, and you choose.
+A travel app, a calculator and a game each get ideas of their own.
 
 - **Real 3D phone mockups.** Every screen sits in a sharp iPhone Pro frame with depth, buttons and a shadow.
 - **Your brand, not a theme.** Colours come from your logo. 3D props are made in your colours.
@@ -54,6 +55,13 @@ It builds colours from your brand. Then it shows you four different design direc
 <br><sub>The Google Play feature graphic from the same set.</sub>
 </p>
 
+## Same skill, different apps
+
+Every app gets its own ideas. These two demo apps were made only to test the skill: a calculator with portrait
+screens and a game with landscape screens. Each row is one concept from round 1.
+
+<img src="docs/showcase/variety.jpg" alt="Round 1 concepts for a calculator app and a landscape game, each with its own look" width="100%">
+
 ## How it works
 
 1. **You share your app.** Tell it what the app does, or give it a link to your website.
@@ -63,8 +71,8 @@ It builds colours from your brand. Then it shows you four different design direc
    You see one storyboard image. You approve it, or you change it.
 3. **You pick the colours.** It reads your brand colours and shows 9 palettes.
    You choose up to four.
-4. **Round 1: four directions.** You get four complete sets.
-   Each set has a different style and a different palette.
+4. **Round 1: four concepts.** You get four complete sets.
+   Each one is a different idea, made from your app's world, your brand and your references.
 5. **You refine.** Tell it what to change, slide by slide.
    It changes only what you ask. It keeps every earlier round, so you can go back.
 6. **You say "generate".** It makes every store size and the feature graphic.
@@ -111,7 +119,7 @@ Everything goes into a `store-screenshots` folder in your project:
 store-screenshots/
 ├── plan/storyboard.png      the story and words you approve
 ├── plan/palettes.png        colour choices made from your brand
-├── rounds/round-1/          the four directions (every round is kept)
+├── rounds/round-1/          the four concepts (every round is kept)
 └── final/                   your store-ready images, one folder per size
 ```
 
@@ -129,7 +137,7 @@ skills/store-screenshot-studio/
 ├── SKILL.md         the step-by-step workflow the agent follows
 ├── references/      design taste, copy rules, layouts, store rules
 ├── scripts/         the renderer: phone mockups, palettes, 3D props, all store sizes
-└── assets/          starter templates
+└── assets/          a parts demo and the feature graphic template
 ```
 
 The design taste comes from a real project. It went through 11 review rounds with a demanding client.
@@ -139,10 +147,26 @@ Read it in [`references/design-taste.md`](skills/store-screenshot-studio/referen
 ## FAQ
 
 <details>
-<summary><b>Does it work for any kind of app?</b></summary>
+<summary><b>Does it work for any kind of app or game?</b></summary>
 <br>
-Yes. It has story plans for shopping, seller tools, productivity, finance and more.
-It writes the words for the people who will read your store page.
+Yes. A shopping app, a travel app, a calculator, a fitness tracker or a game all work.
+The ideas come from your app's own world. A travel app might get boarding passes and stamps.
+A calculator might get receipt tape and giant numbers. A game gets its own characters and world.
+Landscape game screenshots work too.
+</details>
+
+<details>
+<summary><b>Will my screenshots look like everyone else's?</b></summary>
+<br>
+There is no fixed template. The skill builds each concept from your app, your brand colours and your references.
+The four concepts in a round must also look different from each other.
+The FlyCommerce set above is one example of the quality level, not a style you will get.
+</details>
+
+<details>
+<summary><b>Can I bring my own style?</b></summary>
+<br>
+Yes. Share links or images you love, and a few mood words. Your references lead the design.
 </details>
 
 <details>

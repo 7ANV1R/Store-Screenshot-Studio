@@ -3,6 +3,9 @@
 A prop is the one 3D object that symbolises a slide (see design-taste.md). Each project gets its own. Nothing
 is reused from other clients.
 
+Props are optional. Many great concepts use none (a typographic poster, a photo world, a game's own scene). Use a
+prop only when it makes the slide's idea stronger.
+
 ## Order of preference
 
 1. **The user's own assets.** Ask at intake: "Do you have 3D renders, a mascot, product photos or illustrations in
@@ -15,6 +18,11 @@ is reused from other clients.
    chef mascot or a plant). Suggest exact items and sources with clear licences, such as 3dicons.co (CC0) at its
    2400px size. The user downloads them; you never hotlink or scrape. Record the licence in
    `assets/3d/LICENSES.md`.
+
+4. **Art from the app itself.** Game characters, items and scenery can be cut from the screenshots (a crop with
+   `data-crop`, or a cut-out made with a transparent mask). Ask the user for clean source art when they have it.
+5. **Drawn in the page.** Simple illustrations, textures and shapes in SVG or CSS: receipt paper, a blueprint grid,
+   stamps, tickets, doodles. These often fit a concept better than any 3D object.
 
 ## Choosing and colouring
 

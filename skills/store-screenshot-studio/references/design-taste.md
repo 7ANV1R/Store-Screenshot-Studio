@@ -1,114 +1,99 @@
 # Design taste
 
-This is the **default** taste. It comes from a real client project (a white-label shopping app) with 11 review
-rounds. The project went from "you made worst!" to a locked, shipped set. When a user brings their own references or brand
-rules, theirs win wherever they conflict. Everything else here still applies. Every rule below exists because the client either asked for it or rejected its
-opposite. Read this before every round.
+This file has three parts:
+
+1. **Principles.** They apply to every app, every concept and every style.
+2. **Patterns to avoid.** This is the default. The user's own references can override any row.
+3. **One worked example.** These are the exact choices of one client. Learn from them. Do not copy them.
+
+The taste comes from a real client project with 11 review rounds. It went from "you made worst!" to a shipped set
+the client loved. When a user brings their own references or brand rules, theirs win where they conflict.
 
 ## North star
 
-Bold, high-contrast, poster-grade store screenshots that look art-directed by a studio, never templated and never
-"AI made this". Each slide reads in one second at thumbnail size: one big idea, one phone, one prop, one accent.
+The goal is store screenshots that **pop**: eye-catching, natural, beautiful, and made for *this* app. They look
+like a top studio made them. They never look templated, and they never look "AI made this".
 
-The bar: kree8.studio app-store work (see inspiration.md). Bold colour, oversized type, real hardware, 3D props
-that belong to the story.
+The test: someone scrolling the store stops on your first slide. Each slide reads in one second at thumbnail size.
 
-## What won (do this)
+## 1. Principles (always)
 
-**Colour**
-- One saturated base hue for the set, plus one accent that pops hard against it, and ink for text on the accent.
-  That client happened to pick cobalt `#1d4cf2` with lime `#d8ff3e`. That was *their* palette, not the rule. Every
-  project starts from its own brand colours (`studio palette`) and the user chooses.
-- Rhythm: one slide flips to the accent colour as its background (the "inverted" slide). One or two slides shift the
-  glow position or gradient angle. Same family, never the same slide twice.
-- Texture, not decoration: a faint 120px grid (5% white), one soft radial glow, film grain at 8% (overlay). Stay away from
-  aurora blobs, mesh gradients and bokeh.
-- When the client said "more color contrasty" they meant: stronger base saturation, brighter accent, darker ink.
-  Pastel and low-contrast sets were rejected.
+**One idea per slide.** One message, one focal point. Everything else supports it or goes.
 
-**Type**
-- Heavy grotesk display: Bricolage Grotesque 800, `letter-spacing:-.052em`, `line-height:.93`, about 158px on the
-  1320px canvas. Condensed poster caps (Anton) also landed well. Editorial sans (Geist) was acceptable.
-- Headlines are 2 or 3 short lines, left aligned (centred only on a closing or trust slide).
-- Highlight exactly one word per headline: a rotated accent pill (`-2.5deg`, ink text), or the last line set in the accent colour.
-  Vary which treatment each slide uses.
-- Subtitle: one plain sentence, Inter 500 at 48px, 38px under the headline, the same gap on every slide. The client
-  noticed and asked for consistency.
+**Contrast you can feel.** Text, device and background must separate clearly at thumbnail size. This works with any
+colour story: loud saturated colour, deep dark, or calm paper. A grey middle does not work. When a client says
+"more contrasty", they mean stronger colour, a brighter accent and darker ink.
 
-**Device**
-- Real iPhone Pro mockup with extruded titanium sides, buttons, Dynamic Island, a 9:41 status bar, a soft glare and
-  a cast shadow. The engine's `.phone` does all of this, so never draw a flat rounded rectangle.
-- Poses: flat, or a gentle three-quarter turn (`data-tilt="10,-22,8"`, or the mirror `"10,22,-8"`). Mix flat and
-  turned across the set, and never put the same pose on two adjacent slides.
-- The phone must be *visually* centred (centre of the projected silhouette, `data-vc`), not box-centred. A turned
-  phone that is box-centred looks off. The client spotted it immediately.
-- The phone may bleed off the bottom on hero and flat slides. On slides with a prop below the phone, show it whole.
+**Big, confident type.** Headlines are short and large: 2 or 3 lines. Pick a typeface with character that suits the
+concept. Highlight one word, in a way that fits the concept (a pill, a colour, a marker swipe, an underline, a
+sticker).
 
-**Props (3D objects)**
-- At most one hero prop per slide, plus optionally one blurred, smaller copy behind for depth. The prop is a literal
-  symbol of that slide's story: search gets a magnifier, product a parcel box, cart a cart, delivery a truck over a
-  globe, trust a medal, and the hero a star.
-- Glossy "3D icon" style (3dicons.co, CC0) or the engine's procedural models. Every prop is as sharp as the UI next
-  to it. Mixed sharpness reads as cheap.
-- Props hug the phone. They overlap the frame edge or a corner, and sit partly behind it or in front of it. Anchor
-  each prop to a real point: the truck sits next to the order total, the box sits at the phone's lower right.
+**Real things look real.** If there is a device, it must look like real hardware. Props must be as sharp as the UI.
+Shadows fall in one direction. Nothing is blurry by accident.
 
-**Accent devices** (the "studio" layer: one per slide, all in the accent colour)
-- Scalloped seal sticker with circular ring text and a 2-word centre ("Shop 24/7", "Built for scale"), rotated
-  ±10–12°, overlapping a corner of the phone. Give the text a generous inner margin and never let the scallops hug it.
-- Laurel "award" pairs holding generic, store-safe 2-line claims ("Your brand, / your app"). Keep them small, and keep
-  the text large relative to the leaves.
-- A big stat in a laurel on the trust slide (`40K+` / "MARKETPLACES TRUST OUR TECH"). Use only true, verifiable numbers.
-- Rotated tapes (`-28.5deg`) of repeating keywords: one sharp tape crossing over the phone's bottom corner, one
-  blurred tape lower and behind. The words must be about the slide (search, discover, explore).
-- Lime price-tag shapes with a bolt icon, the hole end tucked *under* the phone frame, drooping naturally (−6°/−12°),
-  the rear tag only a sliver.
-- A 3D ribbon wrapping around the phone (behind, then in front), as a motion-graphic accent.
-- Short glossy speed bars (lime 3D pills) as motion trails behind moving objects. All trails point the same way,
-  in the direction of the story (phone to cart).
+**Meaning over decoration.** Every object must tell the slide's story. A random sparkle, blob or icon is noise. One
+strong object beats five weak ones. Empty space is fine. Clutter is not.
 
-**Real UI pop-outs**
-- Use one or two per set at most. Pick a real element, such as a CTA bar or a tracking card. Show it flat and
-  raised with a soft shadow, at the same angle as the phone. Or lift it inside the phone's own 3D space (`.lift`). Never give it an extruded,
-  fake-thick slab look.
+**A set, not seven posters.** The slides share one system (type, colour, device treatment, rhythm), but no two slides
+are the same. Change the composition from slide to slide. Give the set a beat, for example one inverted slide.
 
-**Brand**
-- Use real logo and icon files only, never redrawn ones. Partner or parent brands appear as inline icons inside a
-  sentence ("made by [logo] Acme, the team behind [icon] Rocket").
+**Visual balance.** A turned phone is centred by how it looks, not by its box (`data-vc`). Bleeds are deliberate
+(more than half visible) or not there at all. Text never touches a sticker edge.
 
-## What lost (never do this)
+**Honest words.** Short, plain, true. No dashes. No claims nobody can check (see copywriting.md).
 
-| Rejected | Do this instead |
+**The app is the hero.** Show real screens. Decoration frames the product. It never hides it.
+
+## 2. Patterns to avoid (default)
+
+| Avoid | Prefer |
 |---|---|
-| Many floating cut-outs scattered around the phone | One purposeful pop-out per slide at most, one or two per set |
-| Every phone in the same orientation; repeated layouts | Alternate flat, left-turn and right-turn; vary the composition every slide |
-| Dramatic "lying back" perspective, close-camera distortion, isometric | Gentle 10/±22/±8 turn, perspective 4200px per 860px phone |
-| Phones split across two screenshots, repeatedly | No splits unless the client asks; then one at most |
-| Dark aurora / moody night set; "website hero" cloud background set | Saturated daylight colour with high contrast |
-| Lots of 3D objects to "fill" the slide | One hero prop. Empty space is fine; clutter is not |
-| Random props unrelated to the slide; low-poly or low-res props | A literal story symbol, high-poly, sharp |
-| Hand models holding the phone | Never. They looked fake every time |
-| White-outlined "slab" product cards; extruded UI | Shaded thick cards (`data-thick`) or flat elevated crops |
-| Promo or action badges where there is no deal ("12% OFF", "New In", "Saved to wishlist") | Generic accent devices (seal, tag-with-bolt, tape) |
-| Em or en dashes in any copy | Periods and commas |
-| Superlatives and claims nobody can verify (#1, best, award-winning) | Concrete benefits and true numbers |
-| Sticker text crammed against the edge; laurel text tiny inside big leaves | Generous inner margin; small leaves, readable text |
-| Glitchy layering (connector rings, slivers of a hidden element peeking out) | Simplify until every edge reads cleanly |
-| Elements awkwardly chopped by the slide edge | Bleed deliberately (>50% visible), or keep fully inside |
-| Trails or motion pointing different ways | One direction that follows the story |
-| Dotted or dashed lines as motion paths | Glossy speed bars (`trail`) or a ribbon |
+| The same layout or device pose on every slide | Change composition every slide; never repeat a pose on neighbours |
+| Many floating UI cut-outs around the phone | One purposeful pop-out per slide at most, one or two per set |
+| Dramatic close-camera perspective that distorts the device | Gentle turns, or flat |
+| Splitting one phone across two slides again and again | One deliberate panorama moment, if the concept needs it |
+| Low-contrast, muddy or pastel sets with no point of focus | A clear colour story with a strong accent |
+| Props added to "fill" space; props unrelated to the slide | One meaningful prop, or none |
+| Low-resolution, low-poly or mixed-sharpness assets | Assets at 1.3x display size or more, all equally sharp |
+| Fake-looking hand models holding the phone | Device alone, unless the user's references use real photography |
+| Promo badges with no real deal ("12% OFF", "New In") | Devices that fit the concept |
+| Glitchy layers: slivers peeking out, half-hidden shapes | Simplify until every edge reads cleanly |
+| Elements chopped awkwardly by the slide edge | Bleed on purpose, or keep inside |
+| Motion pointing in different directions | One direction that follows the story |
+| Dotted or dashed motion lines | Speed bars, a ribbon, or real motion blur |
+| Generic "AI" decoration: aurora blobs, mesh gradients, bokeh, random sparkles | Texture and objects that belong to the concept |
 
-## How this kind of client works (process taste)
+## 3. Worked example: what one client approved
 
-- Feedback arrives as numbered per-slide notes. Change exactly what was named; everything else stays pixel-identical.
-  Volunteering redesigns of locked slides breaks trust ("after each round you are making shit").
-- Copy decisions are the client's: offer 3–5 options as choices (multi-select when they pick several), never decide
-  silently.
-- Every round gets its own folder; never delete or overwrite an earlier round unless told. They compare and ask to
-  restore ("restore the 4 versions").
-- At review, ask: new round or update this one? Once they say "do it inside round-N", keep using that round
-  until they say otherwise.
-- Nudges are relative ("1x up, 0.5x left", "close to where the price is"). Read them against the element's own size
-  or a named landmark in the UI, then confirm visually.
-- When something is "still not sharp" or "still wrong" after a fix, measure it. Don't eyeball it again. Report the real
-  cause, not a guess.
+A white-label shopping app. **These are that client's choices, not rules.** Use them to understand the quality
+level and the level of detail. Then make something new for your app.
+
+- **Colour**: cobalt `#1d4cf2` gradient with acid lime `#d8ff3e`, ink `#08123f`. One lime slide for rhythm. Faint
+  120px grid, one soft glow, 8% film grain.
+- **Type**: Bricolage Grotesque 800, about 158px, tight spacing, left aligned. One word in a rotated lime pill.
+  Inter 500 subtitle at 48px, the same gap on every slide.
+- **Device**: real 3D iPhone, flat or turned `10,-22,8` / `10,22,-8`, never the same pose twice in a row. Phones bleed
+  off the bottom on hero slides.
+- **Props**: one glossy 3D icon per slide, each a literal symbol (search: magnifier, product: parcel, cart: cart,
+  delivery: truck over a clay globe, trust: medal). Each prop hugs the phone and anchors to a real point in the UI.
+- **Accent devices**: scalloped seal stickers with ring text, small laurels with 2-line claims, a big true stat
+  (40K+), lime keyword tapes, lime price tags with a bolt icon tucked under the frame, a 3D ribbon around the phone,
+  glossy lime speed bars.
+- **Pop-outs**: one real CTA bar lifted in the phone's 3D space, and one tracking card floating flat.
+- **Brand**: real logo files only. Sister brands as inline icons in a sentence.
+
+You can see the result in the repository README. A concept for another app should feel as considered as this, and
+look nothing like it.
+
+## How clients give feedback (process taste)
+
+- Feedback arrives as numbered notes per slide. Change exactly what was named. Everything else stays the same.
+  Redesigning slides nobody asked about breaks trust.
+- Copy decisions belong to the client. Offer 3 to 5 options as choices. Never decide silently.
+- Every round gets its own folder. Never delete or overwrite a round unless told. Clients compare old rounds and
+  ask to restore them.
+- At each review, ask: new round, or update this one? If they say "do it inside round N", keep doing that until
+  they say otherwise.
+- Nudges are relative ("1x up", "close to the price"). Measure them against the element's own size or a named point
+  in the UI. Then check the render.
+- When something is "still wrong" after a fix, measure it. Do not guess twice. Report the real cause.

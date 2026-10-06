@@ -16,7 +16,7 @@
   "launch your own branded app". For a consumer app: "you", "your".
 - **Brand relationships, exactly right**: for sister products say "Acme is made by ParentCo, the team behind
   Rocket", never "built by the Rocket team". Ask who owns what.
-- **Brand names keep their casing**, even in all-caps archetypes: wrap them in `<span style="text-transform:none">bKash</span>`
+- **Brand names keep their casing**, even in all-caps styles: wrap them in `<span style="text-transform:none">bKash</span>`
   (or pick a slide headline without them).
 - **Easy words.** A 12-year-old understands every word. No jargon ("omnichannel", "seamless", "leverage",
   "elevate", "unlock", "empower"). No AI clichés.

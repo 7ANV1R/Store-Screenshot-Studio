@@ -1,7 +1,10 @@
 // Colours on stickers/laurels (data-seal, data-ink, data-laurel, data-burst) accept CSS vars, e.g. var(--accent).
 // Builds iPhone 17 Pro mockups (.phone) and real-UI crops ([data-crop]) from the app's raw screens.
 // screens/screens.js (written by `studio init`) sets window.SRC = { w, h } (source pixel size) before this file loads.
-const SRC = window.SRC || { w: 1206, h: 2622 }, SRC_W = SRC.w, AR = SRC.h / SRC.w;
+const SRC = window.SRC || { w: 1206, h: 2622 }, SRC_W = SRC.w;
+// landscape sources (most games): the phone is built portrait, its screen image turned 90°, then the whole phone
+// is turned -90° so the device and the picture both read as landscape. data-orient="portrait|landscape" overrides.
+const SRC_LAND = SRC.w > SRC.h, AR = Math.max(SRC.w, SRC.h) / Math.min(SRC.w, SRC.h);
 const IMG = n => `${window.SCREENS || '../../screens'}/${n}.png`;
 document.documentElement.style.setProperty('--ar', AR);
 
@@ -23,14 +26,19 @@ function buildPhone(p) {
     Object.assign(p.style, { left: cx - w / 2 + 'px', top: cy - h / 2 + 'px' });
   }
   const bar = p.dataset.bar === 'light' ? ' light' : '';
-  const src = p.dataset.src;
+  const src = p.dataset.src, land = p.dataset.orient ? p.dataset.orient === 'landscape' : SRC_LAND;
+  const sw = w - 2 * w * (.0125 + .0215), sh = sw * AR;
+  const img = land ? `<img src="${IMG(src)}" style="inset:auto;left:${(sw - sh) / 2}px;top:${(sh - sw) / 2}px;width:${sh}px;height:${sw}px;transform:rotate(90deg)">`
+    : `<img src="${IMG(src)}">`;
   const face = `<div class="face"><div class="bezel"></div><div class="screen">
-    <img src="${IMG(src)}"><div class="sb${bar}"><span>9:41</span>${ICONS}</div><div class="island"></div><div class="glare"></div>
+    ${img}${land ? '' : `<div class="sb${bar}"><span>9:41</span>${ICONS}</div>`}<div class="island"></div><div class="glare"></div>
   </div></div>`;
+  const turn = land ? ' rotateZ(-90deg)' : '';
 
   if (!p.dataset.tilt) {
     const btns = BUTTONS.map(([s, t, l]) => `<i class="btn ${s}" style="top:${t * h}px;height:${l * h}px"></i>`).join('');
     p.innerHTML = btns + face;
+    if (land) p.style.transform = (p.style.transform || '') + turn;
     return;
   }
 
@@ -66,7 +74,7 @@ function buildPhone(p) {
     face.replace('class="face"', 'class="face" style="transform:translateZ(.5px)"');
   p.style.setProperty('--shadow', 'none');
   lifts.forEach(el => liftOff(p, el, w));
-  p.style.transform = `perspective(${p.dataset.persp || 4200}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
+  p.style.transform = `perspective(${p.dataset.persp || 4200}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)${turn}`;
 }
 
 // <div class="lift" data-crop="screen x y w h r" data-z="110" data-edge="#0a3fae"> inside a tilted .phone:

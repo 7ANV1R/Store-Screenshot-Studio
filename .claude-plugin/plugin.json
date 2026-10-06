@@ -1,7 +1,7 @@
 {
   "name": "store-screenshot-studio",
   "description": "Bold, art-directed App Store and Google Play screenshots from your own app screens. Approve the story and brand palettes first, compare four design directions, then export every store size and the Play feature graphic.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": { "name": "7ANV1R", "url": "https://github.com/7ANV1R" },
   "homepage": "https://github.com/7ANV1R/Store-Screenshot-Studio",
   "repository": "https://github.com/7ANV1R/Store-Screenshot-Studio",

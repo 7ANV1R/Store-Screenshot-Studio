@@ -29,7 +29,9 @@ been answered explicitly.
 ## Should know (ask if not obvious)
 
 - **Tone**: playful and loud, premium and calm, or editorial? Their brand colours vs a fresh store-only palette?
-- **References they love**: links or images. Add them to the run's notes and look at them.
+- **References and mood**: links or images they love, and 2 or 3 mood words ("playful", "premium", "retro"). These
+  lead the concepts (references/concepts.md). Look at every reference before you design.
+- **Their own art**: characters, mascots, 3D renders, illustrations or product photos they own.
 - **Screens to avoid**: unfinished features, test data, other people's names or photos, dark mode vs light mode.
 - **Localization**: ask for the languages and the text direction.
   - Non-Latin scripts need a font with those letters, for example Noto Sans Bengali or Noto Sans Arabic.

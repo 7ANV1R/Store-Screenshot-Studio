@@ -1,8 +1,8 @@
 # Inspiration (the original reference set)
 
-These were the founding references for the taste in design-taste.md. Open them (WebFetch, or download and view) at
-the start of round 1, and whenever a round drifts toward generic. Take the *principles* noted under each, not the
-pixels.
+This is the **default board**: the references from the project the taste came from. Use it only as a fallback,
+when the user has no references and a fresh search for the app's category gives too little (see
+references/concepts.md, "Where ideas come from"). Take the *principles* from each, never the look.
 
 ## kree8.studio: app-store screenshot projects
 
@@ -35,7 +35,7 @@ https://pc4uqqeedupn9qcj.public.blob.vercel-storage.com/legacy/work/app-store/pr
    AI travel: dark photo-backed panels, hand-drawn underline/circle highlights on words, planes and pins as props.
 4. https://cdn.dribbble.com/userupload/47979369/file/3d66677c8ed81de0130a22806a96d717.png?resize=2048x1536&vertical=center
    Travel booking: neutral grey with tilted phones, highlighter-marker word highlights, line-art doodles (pins,
-   flight paths, a hiker). A good source for the "paper" archetype (take the highlighter and doodles; skip dotted
+   flight paths, a hiker). A good source for a calm "paper" concept (take the highlighter and doodles; skip dotted
    motion lines, which the client rejected).
 5. https://cdn.dribbble.com/userupload/48457734/file/ecdc9dfc8ee5f1f8ccf175d1689c8250.png?resize=2048x1536&vertical=center
    Health app: soft sage green, serif plus sans pairing, laurel stat "30,000+ Active Users", a phone tilted across the
