@@ -4,7 +4,7 @@ All sizes are on the 1320 × 2868 canvas that every slide is designed on.
 
 ## The story
 
-The story lives in `plan/plan.json`. The user approves it on `plan/storyboard.png` before any design (gate A).
+The story lives in `.studio/plan/plan.json`. The user approves it on `1-storyboard.png` before any design (gate A).
 
 There is no fixed story. Build it from what makes **this** app worth installing:
 
@@ -36,8 +36,12 @@ landscape phone or a full-bleed screen with no device. A panorama across slides 
 hard, or lift the one meaningful card and let the concept carry the slide. Skip screens that are mostly text.
 
 **Demo data** (test names, impossible numbers, personal links): raise it at intake. A new capture with clean data
-is best. If that is not possible, edit the copy in `store-screenshots/screens/SLUG.png` (the original files stay
+is best. If that is not possible, edit the copy in `store-screenshots/.studio/screens/SLUG.png` (the original files stay
 untouched). Paint over the area with the colour around it, or blur it. Tell the user which screens you edited.
+
+**Proof.** If the user gave any real number (rating, users, downloads, awards, press), put one laurel on slide 1
+(under or above the headline) and use the rest on the trust beat. See "Proof: laurels and stats" in
+design-taste.md.
 
 **No true number?** Do not fake a stat (no "0 …", no "100%"). End with another strong idea.
 
@@ -80,6 +84,10 @@ you add anything.
 Run this on every rendered PNG at full size before you show anything.
 
 - [ ] One-second read: the headline is readable at 20% size and there is one clear focal point
+- [ ] Hide-the-copy test: with every word covered, the slides still say roughly what the app does
+- [ ] Every colour comes from the brand (or the app's own content); no stock accent
+- [ ] 3D on a few slides only, each object from the app's world, one look across the set
+- [ ] Real proof the user gave is on the page (a laurel on slide 1 or the trust slide); nothing invented
 - [ ] The concept is clear on every slide, and the four concepts look clearly different from each other
 - [ ] It does not look like a recolour of the worked example in design-taste.md (unless the user asked for that)
 - [ ] Turned phones look centred; no two neighbouring slides share a pose

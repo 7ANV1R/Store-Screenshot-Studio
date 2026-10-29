@@ -31,7 +31,9 @@ It builds colours from your brand. Then it invents four concepts from your app's
 The same skill gives every app a different result, built from your context, your brand and your references.
 
 - **Real 3D phone mockups.** Every screen sits in a sharp iPhone Pro frame with depth, buttons and a shadow.
-- **Your brand, not a theme.** Colours come from your logo. 3D props are made in your colours.
+- **Your brand, not a theme.** Every palette is built from your logo colours, never a stock accent.
+- **3D with taste.** A few meaningful objects, in the style your concept needs: glossy, clay, cartoon, low-poly or metal.
+- **Real proof that pops.** Your true rating, user count or awards go into a laurel that matches the design.
 - **No wasted rounds.** You approve the screens, the words and the colours before any design starts.
 - **Every store size at once.** One design becomes iPhone, iPad, Android phone and Android tablet sets.
 - **Store-safe text.** It flags fake claims like "#1" or "best" and checks every line before export.
@@ -39,7 +41,7 @@ The same skill gives every app a different result, built from your context, your
 ## Install
 
 You need **Node.js 20 or newer** and **Google Chrome**.
-The first run downloads a small renderer, so it needs internet once.
+The first run downloads a small renderer (about 45 MB), so it needs internet then.
 
 ### Claude Code (recommended)
 
@@ -72,15 +74,20 @@ Open your app project in Claude Code. Then ask in your own words. For example:
 
 You can also start it directly with `/store-screenshot-studio`.
 
-Everything goes into a `store-screenshots` folder in your project:
+Everything goes into a `store-screenshots` folder in your project. It holds only images:
 
 ```
 store-screenshots/
-├── plan/storyboard.png      the story and words you approve
-├── plan/palettes.png        colour choices made from your brand
-├── rounds/round-1/          the four concepts (every round is kept)
-└── final/                   your store-ready images, one folder per size
+├── 1-storyboard.png         the story and words you approve
+├── 2-palettes.png           colour choices made from your brand
+├── round-1/overview.png     the four concepts side by side (every round is kept)
+├── round-1/<concept>/       each concept's slides at full size
+└── final/                   your store-ready images, one folder per store size
 ```
+
+The editable working files sit in a hidden `.studio` folder inside it, so you can stop at any time and come back
+weeks later: say "continue my store screenshots" and it picks up where you left off.
+The renderer lives in your system's temp folder, shared by every project, and reinstalls itself if the system cleans it up.
 
 ### Tips for the best result
 
@@ -102,7 +109,7 @@ store-screenshots/
    Each one is a different idea, made from your app's world, your brand and your references.
 5. **You refine.** Tell it what to change, slide by slide.
    It changes only what you ask. It keeps every earlier round, so you can go back.
-6. **You say "generate".** It makes every store size and the feature graphic.
+6. **You say "generate".** It makes every store size, the Play feature graphic and the App Store header and search result art.
 
 ## What you get
 
@@ -113,6 +120,10 @@ store-screenshots/
 | Android phone screenshots | 1080 × 1920 |
 | Android 7" tablet screenshots | 1200 × 1920 |
 | Google Play feature graphic | 1024 × 500 |
+| App Store product page header | 3840 × 1646 |
+| App Store search result | 3840 × 2560 |
+
+The three wide images are one design. Its headline and logo always sit inside each store's safe area, so no crop or overlay cuts them off.
 
 <details>
 <summary><b>See the full example set in every size</b></summary>
@@ -132,7 +143,7 @@ skills/store-screenshot-studio/
 ├── SKILL.md         the step-by-step workflow the agent follows
 ├── references/      design taste, copy rules, layouts, store rules
 ├── scripts/         the renderer: phone mockups, palettes, 3D props, all store sizes
-└── assets/          a parts demo and the feature graphic template
+└── assets/          a parts demo and the banner template (feature graphic, header, search result)
 ```
 
 The design taste comes from a real project. It went through 11 review rounds with a demanding client.

@@ -1,26 +1,32 @@
 #!/usr/bin/env node
-// Store Screenshot Studio CLI. Run from the project root.
+// Store Screenshot Studio CLI: node SKILL_DIR/scripts/studio.mjs <cmd>, from the project (or any folder inside it).
+// ROUND is a round or one concept in it, the way the folders read: 3 · 3/clean-violet · round-3/clean-violet
 //
-//   node SKILL_DIR/scripts/studio.mjs init <screens-dir> [--ws store-screenshots] [--statusbar auto|clean|keep]
-//   node store-screenshots/engine/studio.mjs doctor                           check Node, renderer, browser
-//   node store-screenshots/engine/studio.mjs palette [--brand hex,hex]        brand colours → plan/palettes.png
-//   node store-screenshots/engine/studio.mjs storyboard [plan/plan.json]      screens + copy → plan/storyboard.png
-//   node store-screenshots/engine/studio.mjs round <n> [--from <round-dir>]   new versioned round folder
-//   node store-screenshots/engine/studio.mjs render <round-dir | file.html>   → out/<name>/01..NN.png + previews
-//   node store-screenshots/engine/studio.mjs final <round-dir/file.html> [--only iphone,ipad,android,tab,feature]
-//   node store-screenshots/engine/studio.mjs check <dir | file.html>          copy lint (dashes) + PNG sizes
-//   node store-screenshots/engine/studio.mjs props [--c hex] [--c2 hex] [--accent hex] [--prefix p-] [--only star,box]   3D prop pack
-//   node store-screenshots/engine/studio.mjs model "<out>=<model>?<query>" …   one procedural 3D prop → assets/3d
+//   init <screens-dir> [--ws store-screenshots] [--statusbar auto|clean|keep]   new workspace from raw screens
+//   status                                       where the project stands: gates, rounds, final, decision notes
+//   doctor                                       check Node, renderer, browser
+//   storyboard                                   .studio/plan/plan.json → 1-storyboard.png
+//   palette [--brand hex,hex]                    brand colours → 2-palettes.png
+//   round [--from ROUND]                         next round folder (empty, or a copy of ROUND)
+//   render ROUND                                 → round-N/<concept>/01..NN.png + round-N/overview.png
+//   final [ROUND] [--only iphone,ipad,android,tab,feature,header,search]   concept → every store asset; no ROUND re-renders
+//   check [ROUND]                                copy lint (dashes, claims) + PNG sizes; no ROUND = everything
+//   props [--c hex] [--c2 hex] [--accent hex] [--look glossy|clay|toon|lowpoly|metal] [--prefix p-] [--only star,box]   3D prop pack
+//   model "<out>=<model>?<query>" …              one procedural 3D prop → .studio/assets/3d
 //
 // Add --open to init/palette/storyboard/render/final to pop the result open in the system image viewer.
 // Slides are authored once at 1320x2868 (App Store 6.9"); `final` re-anchors them for every store size (layout.js).
+// The user's folder holds only images; everything editable lives in its hidden .studio/ and the renderer
+// (node_modules) in the OS temp folder, reinstalled whenever it is missing.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ENGINE = path.dirname(fileURLToPath(import.meta.url));
+const SCRIPTS = path.dirname(fileURLToPath(import.meta.url)), SKILL = path.dirname(SCRIPTS);
+const ENGINE = path.join(os.tmpdir(), 'store-screenshot-studio'), HIDDEN = '.studio';
 const [cmd, ...rest] = process.argv.slice(2);
 const flags = {}, args = [];
 const BOOL = new Set(['open']);   // flags without a value
@@ -31,15 +37,54 @@ for (let i = 0; i < rest.length; i++) {
 }
 
 const W0 = 1320, H0 = 2868;
-const SIZES = {   // key → output folder, canvas
-  iphone: ['iphone-6.9in_1320x2868', 1320, 2868], ipad: ['ipad-13in_2048x2732', 2048, 2732],
-  android: ['android-phone_1080x1920', 1080, 1920], tab: ['android-tab-7in_1200x1920', 1200, 1920],
+const SIZES = {   // key → output folder in final/, canvas
+  iphone: ['app-store-iphone-6.9in', 1320, 2868], ipad: ['app-store-ipad-13in', 2048, 2732],
+  android: ['google-play-phone', 1080, 1920], tab: ['google-play-tablet-7in', 1200, 1920],
 };
-const ENGINE_FILES = ['shared.css', 'shared.js', 'layout.js', 'studio.mjs', 'models.html', 'models.mjs'];
+// banners: one banner.html, its .key block (KEY design px) fitted into each format's safe area [x, y, w, h], the
+// background filling the canvas. ponytail: the safe areas are third-party measurements (Apple's templates, Play guides);
+// re-measure from Apple's templates or Play Console's preview if a store changes its crops.
+const KEY = [2160, 1030];
+const BANNERS = {
+  feature: ['google-play-feature-graphic.png', 1024, 500, [154, 75, 716, 350]],
+  header: ['app-store-header.png', 3840, 1646, [1097, 493, 1646, 661]],
+  search: ['app-store-search-result.png', 3840, 2560, [836, 765, 2168, 1030]],
+};
+const DEPS = { 'playwright-core': '^1.55.0', three: '^0.186.1', 'd3-array': '^3.2.4', 'd3-geo': '^3.1.1', 'topojson-client': '^3.1.0', 'world-atlas': '^2.0.2' };
 const die = m => { console.error('✗ ' + m); process.exit(1); };
-const wsOf = p => {   // the workspace this CLI copy lives in (store-screenshots/engine/studio.mjs), else search up from p
-  if (fs.existsSync(path.join(ENGINE, '..', 'studio.json'))) return path.dirname(ENGINE);
-  let d = path.resolve(p); while (d !== path.dirname(d)) { if (fs.existsSync(path.join(d, 'studio.json'))) return d; d = path.dirname(d); } die('no studio.json above ' + p + ' (run init first)'); };
+const rel = p => path.relative(process.cwd(), p) || '.';
+// the workspace: the cwd, a store-screenshots/ in it, or either of those in a parent folder
+const wsOf = () => {
+  for (let d = process.cwd(); ; d = path.dirname(d)) {
+    for (const ws of [d, path.join(d, 'store-screenshots')]) if (fs.existsSync(path.join(ws, HIDDEN, 'studio.json'))) return ws;
+    if (d === path.dirname(d)) die('no workspace here: cd into the project, or run init first');
+  }
+};
+const concepts = dir => fs.readdirSync(dir).filter(f => f.endsWith('.html') && !f.startsWith('_')).sort().map(f => f.slice(0, -5));
+const roundNums = ws => fs.readdirSync(path.join(ws, HIDDEN, 'rounds')).map(f => +(f.match(/^round-(\d+)$/) || [])[1]).filter(Boolean).sort((a, b) => a - b);
+// ROUND → { name: 'round-3', dir: hidden source, out: visible folder, file: concept html or undefined }
+function ref(ws, s) {
+  const m = String(s || '').match(/^(?:round-?)?(\d+)(?:\/([\w.-]+?)(?:\.html)?)?\/?$/) || die(`"${s || ''}" is not a round: use 3 or 3/concept (see: status)`);
+  const name = 'round-' + m[1], dir = path.join(ws, HIDDEN, 'rounds', name), file = m[2] && path.join(dir, m[2] + '.html');
+  if (!fs.existsSync(dir)) die(`no ${name} yet (have: ${roundNums(ws).join(', ') || 'none'})`);
+  if (file && !fs.existsSync(file)) die(`${name} has no "${m[2]}" (has: ${concepts(dir).join(', ')})`);
+  return { name, dir, file, out: path.join(ws, name) };
+}
+// ponytail: the OS prunes temp files unused for a few days, maybe file by file. Rather than detect a half-pruned
+// tree, start clean after 2 idle days; npm's own cache makes the reinstall quick and usually offline.
+function engine() {
+  const stamp = path.join(ENGINE, '.last-used');
+  if (!fs.existsSync(stamp) || Date.now() - fs.statSync(stamp).mtimeMs > 2 * 864e5) fs.rmSync(ENGINE, { recursive: true, force: true });
+  fs.mkdirSync(ENGINE, { recursive: true });
+  for (const f of ['models.html', 'models.mjs']) fs.copyFileSync(path.join(SCRIPTS, f), path.join(ENGINE, f));
+  fs.writeFileSync(path.join(ENGINE, 'package.json'), JSON.stringify({ name: 'store-screenshot-engine', private: true, type: 'module', dependencies: DEPS }, null, 2));
+  if (Object.keys(DEPS).some(d => !fs.existsSync(path.join(ENGINE, 'node_modules', d, 'package.json')))) {
+    console.log('setting up the renderer (needs internet the first time) …');
+    execSync('npm install --silent --no-audit --no-fund --prefer-offline', { cwd: ENGINE, stdio: 'inherit' });
+  }
+  fs.writeFileSync(stamp, '');
+  loadPlaywright(ENGINE);
+}
 const pngSize = f => { const b = fs.readFileSync(f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 // --open: show a result in the system image viewer (nice for non-technical users); never fails the command
 const openFile = f => { if (!flags.open) return;
@@ -65,14 +110,13 @@ const contrast = (a, b) => { const [x, y] = [lumi(a), lumi(b)].sort((p, q) => q 
 const hueOf = hex => rgb2hsl(hx(hex))[0];
 const tone = (hex, s, l, dh = 0) => { const [h, S] = rgb2hsl(hx(hex)); return toHex(hsl2rgb((h + dh + 360) % 360, s ?? S, l)); };
 const hueDist = (a, b) => { const d = Math.abs(hueOf(a) - hueOf(b)) % 360; return Math.min(d, 360 - d); };
-const ACCENTS = { lime: '#d8ff3e', sun: '#ffe14d', pink: '#ff4fa3', cyan: '#41f0ff', tangerine: '#ff7a1a', peach: '#ffb27a', mint: '#7dffc4', lilac: '#c9b2ff', coral: '#ff6b5e' };
-// the acid accent that pops hardest on this base while staying away from its hue (and from `avoid`)
-const pickAccent = (base, avoid = []) => Object.values(ACCENTS)
-  .map(a => [a, contrast(base, a) * (hueDist(a, base) >= 50 ? 1 : .45) * (avoid.some(v => hueDist(a, v) < 30) ? .6 : 1)])
-  .sort((p, q) => q[1] - p[1])[0][0];
 const textOn = (bg, dark) => contrast(bg, '#ffffff') >= contrast(bg, dark) ? '#ffffff' : dark;
+// the first candidate that pops on this base (3:1 or more), else white or ink, whichever reads better
+const popOn = (base, ink, ...c) => c.find(x => x && contrast(base, x) >= 3) || textOn(base, ink);
 
-// a spread of palettes around the brand colour: brand-led, contrasting, neutral, and two proven classics
+// every palette is built from the brand: its colours, their shades and tints, white, and a brand-tinted ink. No stock
+// accent colours (they made every set look alike): a new hue only comes from the brand's own second colour, or from
+// the one 'complement' option.
 function palettes(brands) {
   const brand = brands[0], second = brands.find((b, i) => i && hueDist(b, brand) > 40);
   const [, S, Lb] = rgb2hsl(hx(brand)), sat = Math.min(.88, Math.max(.6, S)), ink = tone(brand, .55, .1);
@@ -83,23 +127,21 @@ function palettes(brands) {
   };
   // keep the exact brand colour where it already works as a base; only nudge it when it is too light or too dark
   const bold = Lb >= .16 && Lb <= .42 ? brand : tone(brand, sat, .33), vivid = Lb > .42 && Lb <= .62 ? brand : tone(brand, Math.max(sat, .72), .5);
-  const comp = tone(brand, .72, .32, 180), mid = tone(brand, .38, .09);
-  const muddy = h => h > 40 && h < 95, step = [70, -70, 100, -100].find(d => !muddy((hueOf(brand) + d + 360) % 360)) ?? 70;
-  const neigh = tone(brand, .74, .34, step);
-  const boldAccent = second && contrast(bold, second) >= 3 ? second : pickAccent(bold), flood = boldAccent;
+  const comp = tone(brand, .72, .32, 180), mid = tone(brand, .38, .09), deep = tone(brand, sat, .15), wash = tone(brand, Math.min(.9, sat + .1), .92);
+  const muddy = h => h > 40 && h < 95, step = [40, -40, 60, -60].find(d => !muddy((hueOf(brand) + d + 360) % 360)) ?? 40;
+  const neigh = tone(brand, .74, .34, step), light = tone(brand, .95, .7);
   return [
-    mk('brand-bold', 'Brand bold', second ? 'your two brand colours, as they are' : 'your colour, deep, with an acid accent', bold, tone(bold, sat, Math.max(.08, rgb2hsl(hx(bold))[2] - .1)), tone(brand, .9, .6), boldAccent),
-    mk('brand-vivid', 'Brand vivid', 'your colour at full strength', vivid, tone(brand, sat, .41), tone(brand, .95, .7), pickAccent(vivid, [brand])),
-    mk('accent-flood', 'Accent flood', 'the whole set on the accent, your colour as ink', flood, tone(flood, .9, .62), '#ffffff', bold, tone(brand, .7, .2)),
-    mk('complement', 'Complement', 'opposite hue base, your colour as the pop', comp, tone(brand, .72, .22, 180), tone(brand, .9, .6, 180),
-      contrast(comp, tone(brand, .95, .62)) >= 3 ? tone(brand, .95, .62) : pickAccent(comp)),
-    mk('neighbour', 'Neighbour', 'a sibling hue, fresh but on-brand', neigh, tone(neigh, .74, .24), tone(neigh, .9, .62), pickAccent(neigh, [brand])),
-    mk('midnight', 'Midnight', 'near-black tinted with your hue, glowing accent', mid, tone(brand, .4, .05), tone(brand, .8, .32),
-      contrast(mid, tone(brand, .95, .62)) >= 4 ? tone(brand, .95, .62) : pickAccent(mid)),
+    mk('brand-bold', 'Brand bold', second ? 'your two brand colours, as they are' : 'your colour, deep, with white highlights', bold,
+      tone(bold, sat, Math.max(.08, rgb2hsl(hx(bold))[2] - .1)), tone(brand, .9, .6), popOn(bold, ink, second, '#ffffff')),
+    mk('brand-vivid', 'Brand vivid', 'your colour at full strength', vivid, tone(brand, sat, .41), tone(brand, .95, .7), popOn(vivid, ink, '#ffffff', second)),
+    mk('tonal', 'Tonal', 'one hue only, from a deep shade to a bright tint', deep, tone(brand, sat, .08), tone(brand, .9, .42), popOn(deep, ink, light, vivid)),
+    mk('clean', 'Clean white', 'white canvas, your colour only on the key word and UI', '#ffffff', '#f0f1f4', wash, popOn('#ffffff', ink, vivid, bold), ink),
+    mk('wash', 'Soft wash', 'a pale wash of your colour with deep brand ink', wash, tone(brand, Math.min(.9, sat), .86), '#ffffff', popOn(wash, ink, bold, deep), tone(brand, .6, .16)),
+    mk('midnight', 'Midnight', 'near-black tinted with your hue, glowing accent', mid, tone(brand, .4, .05), tone(brand, .8, .32), popOn(mid, ink, light, '#ffffff')),
     mk('paper', 'Paper', 'warm off-white, ink type, highlighter in your colour', '#f4f1ea', '#e9e3d6', '#ffffff',
-      contrast(tone(brand, .95, .72), '#141414') >= 7 ? tone(brand, .95, .72) : '#ffe36b', '#141414'),
-    mk('cobalt-lime', 'Cobalt × lime', 'electric classic (proven, brand-neutral)', '#1d4cf2', '#0e2fc4', '#7aa0ff', '#d8ff3e'),
-    mk('tangerine-sun', 'Tangerine × sun', 'hot poster classic (brand-neutral)', '#ff5a1f', '#e2400a', '#ffa066', '#ffe14d', '#ffffff'),
+      contrast(tone(brand, .95, .78), '#141414') >= 7 ? tone(brand, .95, .78) : tone(brand, .95, .85), '#141414'),
+    mk('neighbour', 'Neighbour', 'a sibling hue, fresh but on-brand', neigh, tone(neigh, .74, .24), tone(neigh, .9, .62), popOn(neigh, ink, second, '#ffffff')),
+    mk('complement', 'Complement', 'opposite hue base, your colour as the pop', comp, tone(brand, .72, .22, 180), tone(brand, .9, .6, 180), popOn(comp, ink, light, '#ffffff')),
   ];
 }
 const paletteCss = p => `:root{--base:${p.base};--base2:${p.base2};--glow:${p.glow};--accent:${p.accent};--on-base:${p.onBase};--on-accent:${p.onAccent};--ink:${p.ink}}`;
@@ -108,7 +150,7 @@ const paletteCss = p => `:root{--base:${p.base};--base2:${p.base2};--glow:${p.gl
 let chromium;
 function loadPlaywright(engineDir) {
   const req = createRequire(path.join(engineDir, 'package.json'));
-  try { ({ chromium } = req('playwright-core')); } catch { die(`playwright-core missing in ${engineDir} (cd there and run: npm install)`); }
+  try { ({ chromium } = req('playwright-core')); } catch { die(`the renderer is broken: delete ${engineDir} and run the command again`); }
 }
 async function launch() {
   const args = ['--allow-file-access-from-files'];
@@ -124,8 +166,43 @@ async function shoot(page, file) {
   await page.waitForTimeout(200);
   await page.screenshot({ path: file });
 }
-async function sheet(browser, html, file, width) {
-  const tmp = path.join(path.dirname(file), `_sheet_${Date.now()}.html`);
+// big render → exact store size with Lanczos-3 (Chrome's own 'high' resize is visibly softer on UI text), saved via a
+// screenshot so the PNG is plain RGB: both stores reject files with an alpha channel
+async function downsample(browser, big, out, W, H) {
+  const page = await browser.newPage({ viewport: { width: W, height: H } });
+  await page.goto(pathToFileURL(path.dirname(big)).href);
+  await page.evaluate(async ([url, W, H]) => {
+    const im = new Image(); im.src = url; await im.decode();
+    const w = im.naturalWidth, h = im.naturalHeight, c = document.createElement('canvas');
+    c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+    const lz = t => t === 0 ? 1 : Math.abs(t) >= 3 ? 0 : 3 * Math.sin(Math.PI * t) * Math.sin(Math.PI * t / 3) / (Math.PI * Math.PI * t * t);
+    // one separable pass: n source samples per line → m, along x (horiz) or y
+    const pass = (d, sw, sh, m, horiz) => {
+      const n = horiz ? sw : sh, lines = horiz ? sh : sw, ow = horiz ? m : sw, r = n / m, o = new Float32Array(ow * (horiz ? sh : m) * 4);
+      for (let i = 0; i < m; i++) {
+        const c = (i + .5) * r - .5, taps = [];
+        let sum = 0;
+        for (let k = Math.ceil(c - 3 * r); k <= Math.floor(c + 3 * r); k++) { const v = lz((k - c) / r); taps.push(Math.min(n - 1, Math.max(0, k)), v); sum += v; }
+        for (let l = 0; l < lines; l++) {
+          let R = 0, G = 0, B = 0;
+          for (let t = 0; t < taps.length; t += 2) { const s = (horiz ? l * sw + taps[t] : taps[t] * sw + l) * 4, v = taps[t + 1]; R += d[s] * v; G += d[s + 1] * v; B += d[s + 2] * v; }
+          const q = (horiz ? l * ow + i : i * ow + l) * 4; o[q] = R / sum; o[q + 1] = G / sum; o[q + 2] = B / sum;
+        }
+      }
+      return o;
+    };
+    const f = pass(pass(x.getImageData(0, 0, w, h).data, w, h, W, true), W, h, H, false), id = new ImageData(W, H);
+    for (let i = 0; i < f.length; i += 4) { id.data[i] = f[i]; id.data[i + 1] = f[i + 1]; id.data[i + 2] = f[i + 2]; id.data[i + 3] = 255; }
+    const out = document.createElement('canvas'); out.width = W; out.height = H; out.getContext('2d').putImageData(id, 0, 0);
+    document.body.style.margin = 0; document.body.replaceChildren(out);
+  }, [pathToFileURL(big).href, W, H]);
+  await page.screenshot({ path: out });
+  await page.close();
+}
+
+// base: the folder the sheet's relative image paths resolve from
+async function sheet(browser, html, file, width, base = path.dirname(file)) {
+  const tmp = path.join(base, `_sheet_${Date.now()}.html`);
   fs.writeFileSync(tmp, html);
   const pg = await browser.newPage({ viewport: { width, height: 800 } });
   await pg.goto(pathToFileURL(tmp).href, { waitUntil: 'networkidle' });
@@ -157,18 +234,11 @@ const commands = {
   async init() {
     const src = args[0] && path.resolve(args[0]);
     if (!src || !fs.existsSync(src)) die('usage: init <screens-dir> [--ws store-screenshots]');
-    const ws = path.resolve(flags.ws || 'store-screenshots'), eng = path.join(ws, 'engine'), skill = path.dirname(ENGINE);
-    for (const d of ['engine', 'screens', 'assets/3d', 'assets/brand', 'rounds', 'final']) fs.mkdirSync(path.join(ws, d), { recursive: true });
-    for (const f of ENGINE_FILES) fs.copyFileSync(path.join(ENGINE, f), path.join(eng, f));
-    fs.cpSync(path.join(skill, 'assets', 'templates'), path.join(ws, 'templates'), { recursive: true });
-    if (!fs.existsSync(path.join(eng, 'package.json')))
-      fs.writeFileSync(path.join(eng, 'package.json'), JSON.stringify({ name: 'store-screenshot-engine', private: true, type: 'module', dependencies: { 'playwright-core': '^1.55.0' } }, null, 2));
-    if (!fs.existsSync(path.join(eng, 'node_modules', 'playwright-core'))) {
-      console.log('installing playwright-core …');
-      execSync('npm install --silent --no-audit --no-fund', { cwd: eng, stdio: 'inherit' });
-    }
-    if (!fs.existsSync(path.join(ws, '.gitignore'))) fs.writeFileSync(path.join(ws, '.gitignore'), 'engine/node_modules/\n');
-    loadPlaywright(eng);
+    const ws = path.resolve(flags.ws || 'store-screenshots'), st = path.join(ws, HIDDEN), scr = path.join(st, 'screens');
+    for (const d of ['screens', 'assets/3d', 'assets/brand', 'plan', 'rounds']) fs.mkdirSync(path.join(st, d), { recursive: true });
+    const notes = path.join(st, 'notes.md');   // the decision log that lets a later session pick up where this one stopped
+    if (!fs.existsSync(notes)) fs.writeFileSync(notes, '# Decisions\n\n');
+    engine();
 
     // screens: copy as <slug>.png, strip the real status bar (the mockup draws its own 9:41 bar + Dynamic Island)
     const files = fs.readdirSync(src).filter(f => /\.(png|jpe?g|webp)$/i.test(f)).sort();
@@ -180,7 +250,7 @@ const commands = {
       used.add(slug); list.push({ file: f, slug });
     }
     const browser = await launch(), page = await browser.newPage();
-    await page.goto(pathToFileURL(path.join(ws, 'screens')).href);
+    await page.goto(pathToFileURL(scr).href);
     const mode = flags.statusbar || 'auto', meta = [];
     for (const it of list) {
       const r = await page.evaluate(async ([url, mode]) => {
@@ -204,25 +274,37 @@ const commands = {
         }
         return { w, h, cleaned, data: c.toDataURL('image/png').split(',')[1] };
       }, [pathToFileURL(path.join(src, it.file)).href, mode]);
-      fs.writeFileSync(path.join(ws, 'screens', it.slug + '.png'), Buffer.from(r.data, 'base64'));
+      fs.writeFileSync(path.join(scr, it.slug + '.png'), Buffer.from(r.data, 'base64'));
       meta.push({ ...it, w: r.w, h: r.h, statusbarCleaned: r.cleaned });
     }
     const count = {}; meta.forEach(m => count[m.w + 'x' + m.h] = (count[m.w + 'x' + m.h] || 0) + 1);
     const [w, h] = Object.entries(count).sort((a, b) => b[1] - a[1])[0][0].split('x').map(Number);
     const odd = meta.filter(m => m.w !== w || m.h !== h);
-    fs.writeFileSync(path.join(ws, 'screens', 'screens.js'),
+    fs.writeFileSync(path.join(scr, 'screens.js'),
       `// written by studio init: source pixel size + screen names (use the name as data-src / data-crop)\nwindow.SRC = { w: ${w}, h: ${h} };\nwindow.SCREEN_NAMES = ${JSON.stringify(meta.map(m => m.slug))};\n`);
-    fs.writeFileSync(path.join(ws, 'studio.json'), JSON.stringify({ source: src, src: { w, h }, screens: meta, created: new Date().toISOString() }, null, 2));
+    fs.writeFileSync(path.join(st, 'studio.json'), JSON.stringify({ source: src, src: { w, h }, screens: meta, created: new Date().toISOString() }, null, 2));
     // contact sheet: every screen with its name, so the agent can review the whole app in one look
     const cols = 8, cw = 240;
     await sheet(browser, `<body style="margin:0;padding:20px;background:#e9e9ee;font:600 15px system-ui;display:grid;grid-template-columns:repeat(${cols},${cw}px);gap:22px 18px">${
       meta.map(m => `<div><img src="${m.slug}.png" style="width:${cw}px;border-radius:14px;display:block;box-shadow:0 4px 14px rgba(0,0,0,.18)"><div style="margin-top:6px;word-break:break-all">${m.slug}</div></div>`).join('')}</body>`,
-      path.join(ws, 'screens', 'contact-sheet.png'), cols * (cw + 18) + 40);
+      path.join(scr, 'contact-sheet.png'), cols * (cw + 18) + 40);
     await browser.close();
-    console.log(`✓ workspace ${ws}  ·  ${meta.length} screens (${w}x${h})  ·  status bar cleaned on ${meta.filter(m => m.statusbarCleaned).length}`);
+    console.log(`✓ workspace ${rel(ws)}  ·  ${meta.length} screens (${w}x${h})  ·  status bar cleaned on ${meta.filter(m => m.statusbarCleaned).length}`);
     if (odd.length) console.log(`! ${odd.length} screens differ from ${w}x${h}: ${odd.map(m => m.slug).join(', ')} (crops/phones assume one size)`);
-    console.log(`  review: ${path.relative(process.cwd(), path.join(ws, 'screens', 'contact-sheet.png'))}`);
-    openFile(path.join(ws, 'screens', 'contact-sheet.png'));
+    console.log(`  review: ${rel(path.join(scr, 'contact-sheet.png'))}`);
+    openFile(path.join(scr, 'contact-sheet.png'));
+  },
+
+  // everything a fresh session needs to resume: gates passed, every round and concept, the final, the decision log
+  async status() {
+    const ws = wsOf(), st = path.join(ws, HIDDEN), meta = JSON.parse(fs.readFileSync(path.join(st, 'studio.json'), 'utf8'));
+    const has = f => fs.existsSync(path.join(ws, f)) ? '✓' : '·', fin = path.join(st, 'rounds', 'final');
+    console.log(`workspace ${rel(ws)}  ·  ${meta.screens.length} screens from ${meta.source}`);
+    console.log(`  ${has('1-storyboard.png')} storyboard   ${has('2-palettes.png')} palettes`);
+    for (const n of roundNums(ws)) console.log(`  round ${n}: ${concepts(path.join(st, 'rounds', 'round-' + n)).map(c => `${n}/${c}`).join('  ') || '(empty)'}`);
+    if (fs.existsSync(path.join(fin, 'from.txt'))) console.log(`  ${has('final/overview.png')} final from ${fs.readFileSync(path.join(fin, 'from.txt'), 'utf8')}`);
+    const notes = path.join(st, 'notes.md');
+    if (fs.existsSync(notes)) console.log('\n' + fs.readFileSync(notes, 'utf8').trim());
   },
 
   // setup check with plain-language fixes
@@ -230,30 +312,26 @@ const commands = {
     const ok = m => console.log('✓ ' + m), bad = m => console.log('✗ ' + m);
     const major = +process.versions.node.split('.')[0];
     major >= 20 ? ok(`Node ${process.versions.node}`) : bad(`Node ${process.versions.node}: needs 20 or newer (https://nodejs.org)`);
-    const eng = fs.existsSync(path.join(ENGINE, 'node_modules', 'playwright-core')) ? ENGINE
-      : fs.existsSync(path.join(process.cwd(), 'store-screenshots', 'engine', 'node_modules')) ? path.join(process.cwd(), 'store-screenshots', 'engine') : null;
-    if (!eng) return console.log('… renderer not installed yet: `init` installs it (needs internet once)');
-    loadPlaywright(eng);
+    engine(); ok('renderer ready in ' + ENGINE);
     try { const b = await launch(); ok('browser found: ' + b.version()); await b.close(); } catch { /* launch() already explained */ }
   },
 
   // brand colours (logo SVGs, then the screens) → a sheet of contrasting palettes to choose from
   async palette() {
-    const ws = wsOf('.'), plan = path.join(ws, 'plan');
-    fs.mkdirSync(plan, { recursive: true });
-    loadPlaywright(path.join(ws, 'engine'));
+    const ws = wsOf(), st = path.join(ws, HIDDEN), plan = path.join(st, 'plan'), out = path.join(ws, '2-palettes.png');
+    engine();
     const browser = await launch();
     let brand = flags.brand ? flags.brand.split(',').map(h => '#' + h.replace('#', '')) : [];
     const sat = h => { const [, S, L] = rgb2hsl(hx(h)); return S > .35 && L > .18 && L < .82; };
     if (!brand.length) {   // logo/icon SVG fills first
-      const dir = path.join(ws, 'assets', 'brand');
+      const dir = path.join(st, 'assets', 'brand');
       for (const f of fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.svg')) : [])
         for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/#[0-9a-f]{6}\b/gi)) if (sat(m[0]) && !brand.includes(m[0].toLowerCase())) brand.push(m[0].toLowerCase());
     }
     if (!brand.length) {   // else the most common saturated hues across the screens
       const page = await browser.newPage();
-      await page.goto(pathToFileURL(path.join(ws, 'screens')).href);
-      const names = JSON.parse(fs.readFileSync(path.join(ws, 'studio.json'), 'utf8')).screens.map(m => m.slug).slice(0, 16);
+      await page.goto(pathToFileURL(path.join(st, 'screens')).href);
+      const names = JSON.parse(fs.readFileSync(path.join(st, 'studio.json'), 'utf8')).screens.map(m => m.slug).slice(0, 16);
       const bins = await page.evaluate(async names => {
         const bins = {};
         for (const n of names) {
@@ -275,7 +353,7 @@ const commands = {
     if (!brand.length) brand = ['#1d4cf2'];
     const list = palettes(brand).map((p, i) => ({ n: i + 1, ...p, css: paletteCss(p) }));
     fs.writeFileSync(path.join(plan, 'palettes.json'), JSON.stringify({ brand, palettes: list }, null, 2));
-    const planFile = path.join(plan, 'plan.json'), meta = JSON.parse(fs.readFileSync(path.join(ws, 'studio.json'), 'utf8'));
+    const planFile = path.join(plan, 'plan.json'), meta = JSON.parse(fs.readFileSync(path.join(st, 'studio.json'), 'utf8'));
     const shot = fs.existsSync(planFile) ? JSON.parse(fs.readFileSync(planFile, 'utf8')).slides?.[0]?.screen : meta.screens[0].slug;
     const tile = p => `<div class="t" style="background:radial-gradient(260px 320px at 72% 40%,${p.glow}88,transparent 70%),linear-gradient(170deg,${p.base},${p.base2})">
       <div class="h" style="color:${p.onBase}">Big idea,<br><span style="background:${p.accent};color:${p.onAccent}">here.</span></div>
@@ -290,57 +368,57 @@ const commands = {
       img{position:absolute;left:78px;top:205px;width:224px;border-radius:30px;border:9px solid #111;box-shadow:0 30px 50px -10px rgba(0,0,0,.45)}
       .seal{position:absolute;left:14px;top:420px;width:104px;height:104px;border-radius:50%;display:grid;place-items:center;text-align:center;font:800 19px/.9 "Bricolage Grotesque";transform:rotate(-12deg)}
       .m{display:flex;flex-direction:column;gap:4px;margin-top:10px;color:#333}.m b{font:700 18px Inter}.sw i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin:0 4px 0 6px;border:1px solid #0002}</style></head>
-      <body>${list.map(p => `<div>${tile(p)}</div>`).join('')}</body>`, path.join(plan, 'palettes.png'), 3 * 380 + 2 * 30 + 72);
+      <body>${list.map(p => `<div>${tile(p)}</div>`).join('')}</body>`, out, 3 * 380 + 2 * 30 + 72, plan);
     await browser.close();
     console.log(`✓ brand colour${brand.length > 1 ? 's' : ''} ${brand.join(' ')} → ${list.length} palettes`);
-    console.log(`  review: ${path.join(plan, 'palettes.png')}  (CSS per palette in plan/palettes.json → "css")`);
-    openFile(path.join(plan, 'palettes.png'));
+    console.log(`  review: ${rel(out)}  (CSS per palette in ${rel(path.join(plan, 'palettes.json'))} → "css")`);
+    openFile(out);
   },
 
-  // plan/plan.json (screens + copy per slide) → plan/storyboard.png for the user to approve before any design
+  // .studio/plan/plan.json (screens + copy per slide) → 1-storyboard.png for the user to approve before any design
   async storyboard() {
-    const ws = wsOf('.'), plan = path.join(ws, 'plan'), file = path.resolve(args[0] || path.join(plan, 'plan.json'));
-    if (!fs.existsSync(file)) die(`write ${file} first: { "app", "audience", "slides": [{ "screen", "job", "headline", "sub" }], "alternates": [] }`);
-    const pj = JSON.parse(fs.readFileSync(file, 'utf8')), names = new Set(JSON.parse(fs.readFileSync(path.join(ws, 'studio.json'), 'utf8')).screens.map(m => m.slug));
-    for (const sl of pj.slides) if (!names.has(sl.screen)) die(`slide "${sl.headline}": unknown screen "${sl.screen}" (see screens/screens.js)`);
-    loadPlaywright(path.join(ws, 'engine'));
+    const ws = wsOf(), st = path.join(ws, HIDDEN), plan = path.join(st, 'plan'), file = path.join(plan, 'plan.json'), out = path.join(ws, '1-storyboard.png');
+    if (!fs.existsSync(file)) die(`write ${rel(file)} first: { "app", "audience", "slides": [{ "screen", "job", "headline", "sub" }], "alternates": [] }`);
+    const pj = JSON.parse(fs.readFileSync(file, 'utf8')), names = new Set(JSON.parse(fs.readFileSync(path.join(st, 'studio.json'), 'utf8')).screens.map(m => m.slug));
+    for (const sl of pj.slides) if (!names.has(sl.screen)) die(`slide "${sl.headline}": unknown screen "${sl.screen}" (have: ${[...names].join(', ')})`);
+    engine();
     const browser = await launch(), esc = t => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const hl = t => esc(t).replace(/\*([^*]+)\*/g, '<mark>$1</mark>');
     await sheet(browser, `<head><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=Inter:wght@500;700&display=block" rel="stylesheet">
       <style>body{margin:0;padding:36px;background:#f1f1f4;font:500 16px Inter;color:#222}h1{font:800 34px "Bricolage Grotesque";margin:0 0 4px}
       .row{display:grid;grid-template-columns:repeat(${pj.slides.length},250px);gap:24px;margin-top:26px}.c{display:flex;flex-direction:column;gap:10px}
       .n{font:700 13px Inter;letter-spacing:.08em;text-transform:uppercase;color:#777}img{width:250px;border-radius:26px;border:8px solid #111}
-      .h{font:800 28px/.98 "Bricolage Grotesque";letter-spacing:-.04em}mark{background:#d8ff3e;padding:0 .1em;border-radius:.15em}.alt{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
+      .h{font:800 28px/.98 "Bricolage Grotesque";letter-spacing:-.04em}mark{background:#ffe58a;padding:0 .1em;border-radius:.15em}.alt{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px}
       .alt div{width:120px;font-size:11px;word-break:break-all}.alt b{display:block;font:800 22px Bricolage Grotesque}.slug{font-size:12px;color:#888;word-break:break-all}.alt img{width:120px;border-width:4px;border-radius:14px}</style></head>
       <body><h1>${esc(pj.app)} · storyboard</h1><div>${esc(pj.audience)}</div>
       <div class="row">${pj.slides.map((sl, i) => `<div class="c"><div class="n">${i + 1} · ${esc(sl.job)}</div><img src="../screens/${sl.screen}.png">
         <div class="h">${hl(sl.headline)}</div><div>${esc(sl.sub)}</div><div class="slug">${sl.screen}</div></div>`).join('')}</div>
       ${(pj.alternates || []).length ? `<h1 style="font-size:22px;margin-top:34px">Other screens I could swap in</h1><div class="alt">${pj.alternates.map((a, i) => `<div><b>${String.fromCharCode(65 + i)}</b><img src="../screens/${a}.png">${a}</div>`).join('')}</div>` : ''}</body>`,
-      path.join(plan, 'storyboard.png'), pj.slides.length * 274 + 60);
+      out, pj.slides.length * 274 + 60, plan);
     await browser.close();
     const issues = pj.slides.flatMap(sl => [sl.headline, sl.sub]).flatMap(t => /[—–]/.test(t || '') ? [`dash in "${t}"`] : []);
-    console.log(`✓ storyboard → ${path.join(plan, 'storyboard.png')}${issues.length ? '\n  ! ' + issues.join('\n  ! ') : ''}`);
-    openFile(path.join(plan, 'storyboard.png'));
+    console.log(`✓ storyboard → ${rel(out)}${issues.length ? '\n  ! ' + issues.join('\n  ! ') : ''}`);
+    openFile(out);
   },
 
+  // the next free round number; --from ROUND copies that round, or only that one concept, with its shared.* snapshot
   async round() {
-    const ws = wsOf('.'), n = args[0] || die('usage: round <n> [--from <round-dir>]');
-    const dir = path.join(ws, 'rounds', `round-${n}`);
-    if (fs.existsSync(dir)) die(dir + ' exists (keep old rounds; pick a new number)');
-    fs.mkdirSync(dir, { recursive: true });
-    const from = flags.from && path.resolve(flags.from);
-    for (const f of ['shared.css', 'shared.js']) fs.copyFileSync(path.join(from && fs.existsSync(path.join(from, f)) ? from : path.join(ws, 'engine'), f), path.join(dir, f));
-    if (from) for (const f of fs.readdirSync(from).filter(f => f.endsWith('.html') && !f.startsWith('_'))) fs.copyFileSync(path.join(from, f), path.join(dir, f));
-    console.log(`✓ ${path.relative(process.cwd(), dir)}${from ? ' (copied from ' + path.relative(process.cwd(), from) + ')' : ''}`);
+    const ws = wsOf(), from = flags.from && ref(ws, flags.from), n = Math.max(0, ...roundNums(ws)) + 1;
+    const dir = path.join(ws, HIDDEN, 'rounds', `round-${n}`);
+    fs.mkdirSync(dir);
+    for (const f of ['shared.css', 'shared.js']) fs.copyFileSync(path.join(from && fs.existsSync(path.join(from.dir, f)) ? from.dir : SCRIPTS, f), path.join(dir, f));
+    for (const c of from ? (from.file ? [from.file] : concepts(from.dir).map(c => path.join(from.dir, c + '.html'))) : []) fs.copyFileSync(c, path.join(dir, path.basename(c)));
+    console.log(`✓ round ${n}${from ? ` (copy of ${flags.from})` : ''}: concepts go in ${rel(dir)}/`);
   },
 
+  // ROUND → round-N/<concept>/01..NN.png and round-N/overview.png (every concept of that round, one row each)
   async render() {
-    const target = path.resolve(args[0] || die('usage: render <round-dir | file.html>')), ws = wsOf(target);
-    loadPlaywright(path.join(ws, 'engine'));
-    const jobs = target.endsWith('.html') ? [target] : fs.readdirSync(target).filter(f => f.endsWith('.html') && !f.startsWith('_')).sort().map(f => path.join(target, f));
+    const ws = wsOf(), r = ref(ws, args.join('/')), jobs = r.file ? [path.basename(r.file, '.html')] : concepts(r.dir);
+    if (!jobs.length) die(`${r.name} has no concepts yet: write <concept>.html files into ${rel(r.dir)}/`);
+    engine();
     const browser = await launch();
-    for (const file of jobs) {
-      const dir = path.dirname(file), name = path.basename(file, '.html'), out = path.join(dir, 'out', name);
+    for (const name of jobs) {
+      const file = path.join(r.dir, name + '.html'), out = path.join(r.out, name);
       fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
       const page = await browser.newPage({ viewport: { width: W0, height: H0 } });
       page.on('pageerror', e => console.error(`  ${name}: ${e.message}`));
@@ -355,40 +433,38 @@ const commands = {
         await shoot(page, path.join(out, `${String(i + 1).padStart(2, '0')}.png`));
       }
       await page.close();
-      await sheet(browser, `<body style="margin:0;background:#e4e4e8;display:flex;gap:40px;padding:40px">${
-        Array.from({ length: n }, (_, i) => `<img src="${name}/${String(i + 1).padStart(2, '0')}.png" style="width:440px;height:956px">`).join('')}</body>`,
-        path.join(dir, 'out', `${name}-preview.png`), n * 480 + 40);
       const issues = lint(file);
-      console.log(`✓ ${path.relative(process.cwd(), file)}: ${n} slides → out/${name}/${issues.length ? `\n  ! ${issues.join('\n  ! ')}` : ''}`);
+      console.log(`✓ ${r.name.slice(6)}/${name}: ${n} slides → ${rel(out)}/${issues.length ? `\n  ! ${issues.join('\n  ! ')}` : ''}`);
     }
-    for (const dir of new Set(jobs.map(path.dirname))) {
-      const previews = fs.readdirSync(path.join(dir, 'out')).filter(f => f.endsWith('-preview.png')).sort();
-      await sheet(browser, `<body style="margin:0;background:#e4e4e8;font:700 40px system-ui;color:#333">${
-        previews.map(f => `<div style="padding:36px 40px 0">${f.replace('-preview.png', '')}</div><img src="out/${f}" style="display:block;width:3400px">`).join('')}</body>`,
-        path.join(dir, 'overview.png'), 3400);
-      console.log(`✓ overview → ${path.relative(process.cwd(), path.join(dir, 'overview.png'))}`);
-      openFile(path.join(dir, 'overview.png'));
-    }
+    const rows = concepts(r.dir).filter(c => fs.existsSync(path.join(r.out, c)))
+      .map(c => [c, fs.readdirSync(path.join(r.out, c)).filter(f => f.endsWith('.png')).sort()]);
+    await sheet(browser, `<body style="margin:0;background:#e4e4e8;font:700 40px system-ui;color:#333;padding:0 40px 40px">${rows.map(([c, pngs]) =>
+      `<div style="padding:36px 0 20px">${c}</div><div style="display:flex;gap:40px">${pngs.map(p => `<img src="${c}/${p}" style="width:440px;height:956px">`).join('')}</div>`).join('')}</body>`,
+      path.join(r.out, 'overview.png'), Math.max(...rows.map(([, p]) => p.length)) * 480 + 40);
     await browser.close();
+    console.log(`✓ overview → ${rel(path.join(r.out, 'overview.png'))}`);
+    openFile(path.join(r.out, 'overview.png'));
   },
 
   async final() {
-    const chosen = path.resolve(args[0] || die('usage: final <rounds/round-N/name.html> [--only iphone,ipad,android,tab,feature]'));
-    const ws = wsOf(chosen), srcDir = path.join(ws, 'final', 'src'), finalDir = path.join(ws, 'final');
-    loadPlaywright(path.join(ws, 'engine'));
-    fs.mkdirSync(srcDir, { recursive: true });
-    if (fs.existsSync(chosen) && chosen.startsWith(path.join(ws, 'rounds'))) {   // promote the chosen set (re-promoting overwrites)
-      let html = fs.readFileSync(chosen, 'utf8');
+    const ws = wsOf(), st = path.join(ws, HIDDEN), srcDir = path.join(st, 'rounds', 'final'), finalDir = path.join(ws, 'final');
+    if (args.length) {   // promote the chosen concept (re-promoting overwrites it; a tuned layout.js is kept)
+      const r = ref(ws, args.join('/'));
+      if (!r.file) die(`pick one concept of ${r.name}: ${concepts(r.dir).map(c => r.name.slice(6) + '/' + c).join(', ')}`);
+      fs.mkdirSync(srcDir, { recursive: true });
+      let html = fs.readFileSync(r.file, 'utf8');
       if (!html.includes('layout.js')) html = html.replace(/(<script src="shared\.js"><\/script>)/, '$1\n<script src="layout.js"></script>');
       fs.writeFileSync(path.join(srcDir, 'screens.html'), html);
-      for (const f of ['shared.css', 'shared.js']) fs.copyFileSync(path.join(path.dirname(chosen), f), path.join(srcDir, f));
-      if (!fs.existsSync(path.join(srcDir, 'layout.js'))) fs.copyFileSync(path.join(ws, 'engine', 'layout.js'), path.join(srcDir, 'layout.js'));
+      for (const f of ['shared.css', 'shared.js']) fs.copyFileSync(path.join(r.dir, f), path.join(srcDir, f));
+      if (!fs.existsSync(path.join(srcDir, 'layout.js'))) fs.copyFileSync(path.join(SCRIPTS, 'layout.js'), path.join(srcDir, 'layout.js'));
+      fs.writeFileSync(path.join(srcDir, 'from.txt'), `${r.name.slice(6)}/${path.basename(r.file, '.html')}`);
     }
-    if (!fs.existsSync(path.join(srcDir, 'screens.html'))) die('nothing to finalize: pass a round file, e.g. final rounds/round-4/volt.html');
-    if (!fs.existsSync(path.join(srcDir, 'feature-graphic.html')))
-      fs.copyFileSync(path.join(ws, 'templates', 'feature-graphic.html'), path.join(srcDir, 'feature-graphic.html'));
+    if (!fs.existsSync(path.join(srcDir, 'screens.html'))) die('nothing to finalize yet: pick a concept, e.g. final 4/volt');
+    if (!fs.existsSync(path.join(srcDir, 'banner.html')))
+      fs.copyFileSync(path.join(SKILL, 'assets', 'templates', 'banner.html'), path.join(srcDir, 'banner.html'));
+    engine();
 
-    const only = (flags.only || 'iphone,ipad,android,tab,feature').split(',');
+    const only = (flags.only || [...Object.keys(SIZES), ...Object.keys(BANNERS)].join(',')).split(',');
     const browser = await launch();
     for (const key of only.filter(k => SIZES[k])) {
       const [folder, W, H] = SIZES[key], out = path.join(finalDir, folder);
@@ -407,80 +483,91 @@ const commands = {
         await shoot(page, path.join(out, `${String(i + 1).padStart(2, '0')}.png`));
       }
       await page.close();
-      console.log(`✓ ${key}: ${n} × ${W}x${H} → final/${folder}/`);
+      console.log(`✓ ${key}: ${n} × ${W}x${H} → ${rel(out)}/`);
     }
-    if (only.includes('feature')) {
-      // authored at 3x (3072x1500) at device scale 1, then downsampled: small 3D phones rendered at 1x get ~0.5px warp
-      // blur, and deviceScaleFactor 3 doesn't help (a full-frame 3x capture falls back to low-res tiles)
-      const page = await browser.newPage({ viewport: { width: 3072, height: 1500 } });
-      await page.goto(pathToFileURL(path.join(srcDir, 'feature-graphic.html')).href, { waitUntil: 'networkidle' });
+    for (const key of only.filter(k => BANNERS[k])) {
+      // render so the key block sits at its authored size (3D phones under ~800px blur when drawn small), then
+      // downsample to the store size; formats whose block needs no shrinking render 1:1
+      const [file, W, H, [sx, sy, sw, sh]] = BANNERS[key], fit = Math.min(sw / KEY[0], sh / KEY[1]), k = Math.min(1, fit);
+      const page = await browser.newPage({ viewport: { width: Math.round(W / k), height: Math.round(H / k) } });
+      page.on('pageerror', e => console.error(`  ${key}: ${e.message}`));
+      await page.goto(pathToFileURL(path.join(srcDir, 'banner.html')).href, { waitUntil: 'networkidle' });
       await page.waitForSelector('body[data-ready]', { timeout: 60000 });
-      const big = path.join(finalDir, '_feature-3x.png');
-      await shoot(page, big);
-      const small = await page.evaluate(async b64 => {
-        const blob = await (await fetch('data:image/png;base64,' + b64)).blob();
-        const bmp = await createImageBitmap(blob, { resizeWidth: 1024, resizeHeight: 500, resizeQuality: 'high' });
-        const c = new OffscreenCanvas(1024, 500); c.getContext('2d').drawImage(bmp, 0, 0);
-        const r = new FileReader(); r.readAsDataURL(await c.convertToBlob({ type: 'image/png' }));
-        return new Promise(ok => r.onload = () => ok(r.result.split(',')[1]));
-      }, fs.readFileSync(big).toString('base64'));
-      fs.writeFileSync(path.join(finalDir, 'feature-graphic_1024x500.png'), Buffer.from(small, 'base64'));
-      fs.unlinkSync(big);
+      const ok = await page.evaluate(([x, y, s]) => {
+        const el = document.querySelector('.key');
+        if (el) Object.assign(el.style, { transformOrigin: '0 0', transform: `translate(${x}px,${y}px) scale(${s})` });
+        return !!el;
+      }, [(sx + (sw - KEY[0] * fit) / 2) / k, (sy + (sh - KEY[1] * fit) / 2) / k, fit / k]);
+      if (!ok) die('banner.html has no .key block (start again from SKILL_DIR/assets/templates/banner.html)');
+      const out = path.join(finalDir, file);
+      if (k === 1) await shoot(page, out);
+      else { const big = path.join(st, `_${key}-big.png`); await shoot(page, big); await downsample(browser, big, out, W, H); fs.unlinkSync(big); }
       await page.close();
-      console.log('✓ feature → final/feature-graphic_1024x500.png');
+      console.log(`✓ ${key}: ${W}x${H} → ${rel(out)}`);
     }
-    // overview: one labelled row per size + the feature graphic
+    // overview: one labelled row per size, then each banner with its safe area dashed
     const rowH = 900, rows = Object.values(SIZES).filter(([f]) => fs.existsSync(path.join(finalDir, f)));
-    const vw = Math.max(1200, ...rows.map(([, w, h]) => Math.ceil(7 * rowH * w / h) + 6 * 36 + 80));
-    const fg = fs.existsSync(path.join(finalDir, 'feature-graphic_1024x500.png'));
-    await sheet(browser, `<body style="margin:0;background:#e4e4e8;font:700 44px system-ui;color:#333;padding:20px 40px 40px">${rows.map(([f]) =>
-      `<div style="padding:40px 0 20px">${f.replace('_', ' · ')}</div><div style="display:flex;gap:36px">${
+    const vw = Math.max(2128, ...rows.map(([, w, h]) => Math.ceil(7 * rowH * w / h) + 6 * 36 + 80));
+    const pct = (v, of) => `${(100 * v / of).toFixed(3)}%`;
+    await sheet(browser, `<body style="margin:0;background:#e4e4e8;font:700 44px system-ui;color:#333;padding:20px 40px 40px">${rows.map(([f, w, h]) =>
+      `<div style="padding:40px 0 20px">${f} · ${w}x${h}</div><div style="display:flex;gap:36px">${
         fs.readdirSync(path.join(finalDir, f)).filter(x => x.endsWith('.png')).sort()
           .map(x => `<img src="${f}/${x}" style="height:${rowH}px;border-radius:24px">`).join('')}</div>`).join('')}${
-      fg ? `<div style="padding:40px 0 20px">feature graphic · 1024x500</div><img src="feature-graphic_1024x500.png" style="width:2048px;border-radius:24px">` : ''}</body>`,
+      Object.values(BANNERS).filter(([f]) => fs.existsSync(path.join(finalDir, f))).map(([f, w, h, [x, y, sw, sh]]) =>
+        `<div style="padding:40px 0 20px">${f.slice(0, -4)} · ${w}x${h} <span style="font-weight:500;color:#777">(dashed: safe area)</span></div>
+        <div style="position:relative;width:2048px"><img src="${f}" style="display:block;width:100%">
+        <div style="position:absolute;left:${pct(x, w)};top:${pct(y, h)};width:${pct(sw, w)};height:${pct(sh, h)};outline:4px dashed #ff2d55"></div></div>`).join('')}</body>`,
       path.join(finalDir, 'overview.png'), vw);
     await browser.close();
-    console.log('✓ overview → final/overview.png');
+    console.log(`✓ overview → ${rel(path.join(finalDir, 'overview.png'))}`);
     openFile(path.join(finalDir, 'overview.png'));
-    await commands.check([finalDir]);
+    await commands.check([finalDir, srcDir]);
   },
 
-  async check(override) {
-    const target = path.resolve((override || args)[0] || '.');
-    const files = fs.statSync(target).isDirectory() ? fs.readdirSync(target, { recursive: true }).map(f => path.join(target, f)) : [target];
+  // copy lint + PNG sizes for ROUND, or the whole workspace
+  async check(targets) {
+    if (!targets) { const ws = wsOf(); targets = args.length ? [(r => r.file || r.dir)(ref(ws, args.join('/')))] : [ws]; }
     let bad = 0;
-    for (const f of files) {
-      if (f.endsWith('.html') && !path.basename(f).startsWith('_')) for (const i of lint(f)) { bad++; console.log(`! ${path.relative(process.cwd(), f)}: ${i}`); }
-      const k = Object.values(SIZES).find(([folder]) => f.includes(`${path.sep}${folder}${path.sep}`));
-      if (f.endsWith('.png') && k) { const [w, h] = pngSize(f); if (w !== k[1] || h !== k[2]) { bad++; console.log(`! ${f}: ${w}x${h}, expected ${k[1]}x${k[2]}`); } }
-      if (f.endsWith('feature-graphic_1024x500.png')) { const [w, h] = pngSize(f); if (w !== 1024 || h !== 500) { bad++; console.log(`! ${f}: ${w}x${h}`); } }
+    for (const target of targets) {
+      const files = fs.statSync(target).isDirectory() ? fs.readdirSync(target, { recursive: true }).map(f => path.join(target, f)) : [target];
+      for (const f of files) {
+        if (f.endsWith('.html') && !path.basename(f).startsWith('_')) for (const i of lint(f)) { bad++; console.log(`! ${rel(f)}: ${i}`); }
+        const k = Object.values(SIZES).find(([folder]) => f.includes(`${path.sep}${folder}${path.sep}`));
+        if (f.endsWith('.png') && k) { const [w, h] = pngSize(f); if (w !== k[1] || h !== k[2]) { bad++; console.log(`! ${rel(f)}: ${w}x${h}, expected ${k[1]}x${k[2]}`); } }
+        const bn = Object.values(BANNERS).find(([file]) => path.basename(f) === file);
+        if (bn) { const [w, h] = pngSize(f); if (w !== bn[1] || h !== bn[2]) { bad++; console.log(`! ${rel(f)}: ${w}x${h}, expected ${bn[1]}x${bn[2]}`); } }
+        if (bn === BANNERS.feature && fs.statSync(f).size > 1024 * 1024) { bad++; console.log(`! ${rel(f)}: over 1 MB, Google Play rejects it (less grain/noise)`); }
+        // colour type 4/6 = has an alpha channel; App Store Connect and Play both refuse those
+        if (f.endsWith('.png') && (k || bn) && [4, 6].includes(fs.readFileSync(f)[25])) { bad++; console.log(`! ${rel(f)}: has an alpha channel, stores reject it`); }
+      }
     }
     console.log(bad ? `✗ ${bad} issue(s)` : '✓ check passed');
   },
 
-  // a brand-coloured pack of glossy 3D props (generic icons + parcel box + speed trails) → assets/3d/<prefix><name>.png
+  // a brand-coloured pack of glossy 3D props (generic icons + parcel box + speed trails) → .studio/assets/3d/<prefix><name>.png
   async props() {
-    const hex = (v, d) => (v || d).replace('#', ''), c = hex(flags.c, '2f6bff'), c2 = hex(flags.c2, 'ffffff'), acc = hex(flags.accent, 'd8ff3e'), pre = flags.prefix || '';
+    const hex = (v, d) => (v || d).replace('#', ''), c = hex(flags.c, '2f6bff'), c2 = hex(flags.c2, 'ffffff'), acc = hex(flags.accent, c), pre = flags.prefix || '';
     const all = { star: `icon?shape=star&c=${c}`, heart: `icon?shape=heart&c=${c}`, bolt: `icon?shape=bolt&c=${c}`,
       chat: `icon?shape=chat&c=${c}&c2=${c2}`, shield: `icon?shape=shield&c=${c}&c2=${c2}`, pin: `icon?shape=pin&c=${c}&c2=${c2}`,
       coin: `icon?shape=coin&c2=${c2}`, chart: `icon?shape=chart&c=${c}`, bell: `icon?shape=bell&c=${c}&c2=${c2}`,
       magnifier: `icon?shape=magnifier&c=${c}&c2=${c2}`, gift: `icon?shape=gift&c=${c}&c2=${c2}`, box: `box?t=${c}&a=${acc}`,
       trail: `trail?c=${c}`, trail2: `trail?c=${c}&v=2` };
     const pick = flags.only ? flags.only.split(',') : Object.keys(all);
-    args.length = 0; for (const k of pick) { if (!all[k]) die(`unknown prop "${k}" (have: ${Object.keys(all).join(', ')})`); args.push(`${pre}${k}=${all[k]}`); }
+    args.length = 0; for (const k of pick) { if (!all[k]) die(`unknown prop "${k}" (have: ${Object.keys(all).join(', ')})`); args.push(`${pre}${k}=${all[k]}${flags.look ? '&look=' + flags.look : ''}`); }
     await commands.model();
   },
 
   async model() {
-    const ws = wsOf('.'), eng = path.join(ws, 'engine');
-    const need = ['three', 'd3-array', 'd3-geo', 'topojson-client', 'world-atlas'].filter(d => !fs.existsSync(path.join(eng, 'node_modules', d)));
-    if (need.length) { console.log('installing ' + need.join(' ') + ' …'); execSync(`npm install --silent --no-audit --no-fund ${need.join(' ')}`, { cwd: eng, stdio: 'inherit' }); }
-    execSync(`node models.mjs ${args.map(a => JSON.stringify(a)).join(' ')}`, { cwd: eng, stdio: 'inherit' });
+    const ws = wsOf();
+    engine();
+    execSync(`node models.mjs ${args.map(a => JSON.stringify(a)).join(' ')}`,
+      { cwd: ENGINE, stdio: 'inherit', env: { ...process.env, STUDIO_OUT: path.join(ws, HIDDEN, 'assets', '3d') } });
   },
 };
 
 if (!commands[cmd]) {
-  console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 16).map(l => l.replace(/^\/\/ ?/, '')).join('\n'));
+  const src = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n');
+  console.log(src.slice(1, src.findIndex(l => l.startsWith('import'))).map(l => l.replace(/^\/\/ ?/, '')).join('\n'));
   process.exit(cmd ? 1 : 0);
 }
 await commands[cmd]();

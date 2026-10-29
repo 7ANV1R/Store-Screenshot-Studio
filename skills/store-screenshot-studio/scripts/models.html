@@ -520,6 +520,39 @@ if (model === 'icon') {
   key.position.set(-3, 5, 6); camPos = V(0, .4, 6); target = V(0, 0, 0); fov = 30;
 }
 
+// ---- ?look= restyles any model for the concept: glossy (default, 3D-icon plastic) · clay (matte and soft: calm, cute)
+// · toon (flat cartoon bands + ink outline: playful, games, kids) · lowpoly (faceted, few segments: geometric, techy)
+// · metal (polished metal in the given colour: gold bells and coins, chrome arrows; realistic, premium)
+const look = q.get('look') || 'glossy';
+if (look !== 'glossy') {
+  const ramp = new THREE.DataTexture(new Uint8Array([80, 165, 255]), 3, 1, THREE.RedFormat);
+  ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
+  const ink = new THREE.MeshBasicMaterial({ color: parseInt(q.get('ink') || '1d1b26', 16), side: THREE.BackSide });
+  ink.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', 'vec3 transformed = position + normal * .028;'); };
+  const CAP = { widthSegments: 10, heightSegments: 6, radialSegments: 7, tubularSegments: 14, capSegments: 2, segments: 10 };
+  const meshes = []; root.traverse(o => o.isMesh && meshes.push(o));
+  for (const o of meshes) {
+    const g = o.geometry, p = g.parameters, m = o.material;
+    if (look === 'lowpoly' && p && (g.constructor === RoundedBoxGeometry || /^(Sphere|Cylinder|Torus|Capsule|Tube|Lathe|Extrude)Geometry$/.test(g.type))) {
+      const args = g.constructor === RoundedBoxGeometry ? [p.width, p.height, p.depth, 1, p.radius]
+        : p.options ? [p.shapes, { ...p.options, curveSegments: 3, bevelSegments: 1 }]
+        : p.points ? [p.points.filter((_, i, a) => i % Math.ceil(a.length / 9) === 0 || i === a.length - 1), 10, p.phiStart, p.phiLength]
+        : Object.entries(p).map(([k, v]) => CAP[k] && typeof v === 'number' ? Math.min(v, CAP[k]) : v);
+      const ng = new g.constructor(...args), a = new THREE.Vector3(), b = new THREE.Vector3();
+      g.computeBoundingBox(); ng.computeBoundingBox();   // rebuilt geometry loses earlier centring: put it back
+      ng.translate(...g.boundingBox.getCenter(a).sub(ng.boundingBox.getCenter(b)).toArray());
+      o.geometry = ng;
+    }
+    const base = { color: m.color, map: m.map, vertexColors: m.vertexColors, clippingPlanes: m.clippingPlanes };
+    o.material = look === 'toon' ? new THREE.MeshToonMaterial({ ...base, gradientMap: ramp })
+      : look === 'metal' ? new THREE.MeshPhysicalMaterial({ ...base, metalness: 1, roughness: .2, clearcoat: .4, clearcoatRoughness: .1 })
+      : new THREE.MeshPhysicalMaterial({ ...base, metalness: 0, roughness: look === 'clay' ? .8 : .55, sheen: look === 'clay' ? .15 : 0, sheenColor: 0xffffff, flatShading: look === 'lowpoly' });
+    if (look === 'toon') o.add(new THREE.Mesh(o.geometry, ink));
+  }
+  if (look === 'toon') { key.intensity = 2.4; scene.environmentIntensity = .25; }
+  if (look === 'metal') scene.environmentIntensity = 1.1;   // metal shows its environment, not its colour
+}
+
 const camera = FULL ? new THREE.OrthographicCamera(X0, X1, 0, -2868, 1, 10000) : new THREE.PerspectiveCamera(fov, 1, .1, 100);
 if (FULL) camera.position.set(0, 0, 5000); else { camera.position.copy(camPos); camera.lookAt(target); }
 // frame the model: fit its bounding sphere into the view

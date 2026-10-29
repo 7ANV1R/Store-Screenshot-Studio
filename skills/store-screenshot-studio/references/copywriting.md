@@ -27,9 +27,12 @@ Present 3–5 options per slot with AskUserQuestion (multiSelect when they pick 
 Recommended option first. Keep the label short and put the full line in the description. Generate options that
 genuinely differ in angle (outcome / feeling / proof / speed), not synonyms.
 
-## Laurel and seal claims (generic, store-safe)
+## Laurels, seals and stats
 
-Laurels: "Your brand, / your app" · "Built to / sell more" · "Made for / every store" · "Ready / on day one".
+A laurel holds **one real number or recognition**: a big line and a small label. "4.8" / "on App Store" ·
+"100K+" / "users" · "Trusted by" / "200k+ users" · "Since 2020" / "5M+ tracked" · "Featured on" / the press mark.
+Match the label to what the number means for the reader ("500K writers", not "500K users" when they write).
+No real proof, no laurel: a laurel around a generic claim reads as a fake award.
 Seal ring text: "ALWAYS OPEN • NEVER CLOSED •", "VERIFIED SELLER • TRUSTED STORE •", "STORES • MARKETPLACES •
 BRANDS •". Seal centre: "Shop 24/7", "Built for scale", or a check icon.
 Stat: only a positive, true, client-confirmed number (never "0 …" or a workaround). Stat label: what the number *means* for the reader ("MARKETPLACES TRUST OUR TECH"), never just "users".

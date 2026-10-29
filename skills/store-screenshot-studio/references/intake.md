@@ -15,14 +15,18 @@ been answered explicitly.
 2. **Platforms.** App Store, Google Play, or both? iPad and Android tablet too? (The default is all four sizes plus the
    feature graphic.)
 3. **The 5–7 moments to show**, in order. Don't ask in the abstract: pick them yourself, write the copy, and show
-   `plan/storyboard.png` (gate A in SKILL.md). The user confirms, swaps (alternates are lettered A, B, C) or reorders.
+   `1-storyboard.png` (gate A in SKILL.md). The user confirms, swaps (alternates are lettered A, B, C) or reorders.
 4. **Brand resources.** Ask for files, not descriptions:
    - logo (SVG preferred) for dark *and* light backgrounds
    - the app icon exactly as it ships (which variant, if several)
    - brand colours (hex), brand fonts (or "pick one")
    - partner, parent or achievement marks they want mentioned, with official asset links
-   Put them in `store-screenshots/assets/brand/`. Never redraw a logo.
-5. **Claims and proof.** Numbers they can stand behind (users, stores, countries, rating). What is off-limits
+   Put them in `store-screenshots/.studio/assets/brand/`. Never redraw a logo.
+5. **Claims and proof.** Ask for every real number and recognition, because a laurel with a true stat is one of
+   the strongest pops a set can have: App Store / Play rating and rating count, users or downloads, things counted
+   by the app (orders, steps, files), years running, awards (Apps we love, App of the Day), press mentions, partners
+   or research, real reviews they can quote. Read the store listing and website for them first and ask the user to
+   confirm what you found. What is off-limits
    (#1, "best", competitor names, prices)? Who owns which brand? (For example, "sister products by the same company",
    never "built by X team" if that's untrue.)
 
@@ -51,7 +55,7 @@ been answered explicitly.
 | Logo (light + dark) | hero slide and feature graphic | ask; never fake one with a text wordmark in a font |
 | App icon | inline in copy, feature graphic | ask |
 | Brand colours | tokens | derive from the screens' primary button colour, and say so |
-| True numbers for stats | trust slide | drop the stat slide element, don't invent |
+| True numbers, awards, press, reviews | laurels on slide 1, trust slide, quote slide | no laurel and no stat; never invent |
 | Partner/parent marks | trust line | official brand-asset page only |
 
 ## Defaults when the client says "you decide"

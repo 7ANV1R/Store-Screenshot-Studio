@@ -3,7 +3,8 @@
 This file has three parts:
 
 1. **Principles.** They apply to every app, every concept and every style.
-2. **Patterns to avoid.** This is the default. The user's own references can override any row.
+2. **Patterns to avoid**, then how to handle colour, 3D objects and proof. This is the default. The user's own
+   references can override any row.
 3. **One worked example.** These are the exact choices of one client. Learn from them. Do not copy them.
 
 The taste comes from a real client project with 11 review rounds. It went from "you made worst!" to a shipped set
@@ -15,10 +16,20 @@ The goal is store screenshots that **pop**: eye-catching, natural, beautiful, an
 like a top studio made them. They never look templated, and they never look "AI made this".
 
 The test: someone scrolling the store stops on your first slide. Each slide reads in one second at thumbnail size.
+Second test: hide every word. If the slides still say roughly what the app does, the visual idea is strong enough.
 
 ## 1. Principles (always)
 
+**Sell the outcome.** People want the result (calmer, fitter, paid sooner), not the feature. Slide 1 is the value
+prop, and every slide reinforces the same outcome.
+
 **One idea per slide.** One message, one focal point. Everything else supports it or goes.
+
+**Look before read.** Find the visual hook first, then write the headline. If a slide needs its copy to be
+understood, a stronger visual idea is waiting.
+
+**Proof on the page.** Real ratings, user counts, awards, press and quotes make an app feel safe to install. Show
+them small and confident (see "Proof: laurels and stats" below). Never invent one.
 
 **Contrast you can feel.** Text, device and background must separate clearly at thumbnail size. This works with any
 colour story: loud saturated colour, deep dark, or calm paper. A grey middle does not work. When a client says
@@ -40,6 +51,9 @@ are the same. Change the composition from slide to slide. Give the set a beat, f
 **Visual balance.** A turned phone is centred by how it looks, not by its box (`data-vc`). Bleeds are deliberate
 (more than half visible) or not there at all. Text never touches a sticker edge.
 
+**Humanize when it fits.** A face, a hand or a real moment catches the eye faster than another mockup. Use photos
+the user owns or licenses; never fake people.
+
 **Honest words.** Short, plain, true. No dashes. No claims nobody can check (see copywriting.md).
 
 **The app is the hero.** Show real screens. Decoration frames the product. It never hides it.
@@ -54,7 +68,9 @@ are the same. Change the composition from slide to slide. Give the set a beat, f
 | Splitting one phone across two slides again and again | One deliberate panorama moment, if the concept needs it |
 | Low-contrast, muddy or pastel sets with no point of focus | A clear colour story with a strong accent |
 | Props added to "fill" space; props unrelated to the slide | One meaningful prop, or none |
-| Low-resolution, low-poly or mixed-sharpness assets | Assets at 1.3x display size or more, all equally sharp |
+| Low-resolution or mixed-sharpness assets; mixed 3D styles in one set | Assets at 1.3x display size or more, all equally sharp, one look per set |
+| A stock "pop" accent (acid lime, volt, hot pink) that is not in the brand | Accents from the brand: its own colours, tints, white or ink |
+| A 3D prop on every slide, mid-size, floating beside the phone | 3D on a few slides, either big and meaningful or small and inline |
 | Fake-looking hand models holding the phone | Device alone, unless the user's references use real photography |
 | Promo badges with no real deal ("12% OFF", "New In") | Devices that fit the concept |
 | Glitchy layers: slivers peeking out, half-hidden shapes | Simplify until every edge reads cleanly |
@@ -62,6 +78,64 @@ are the same. Change the composition from slide to slide. Give the set a beat, f
 | Motion pointing in different directions | One direction that follows the story |
 | Dotted or dashed motion lines | Speed bars, a ribbon, or real motion blur |
 | Generic "AI" decoration: aurora blobs, mesh gradients, bokeh, random sparkles | Texture and objects that belong to the concept |
+
+## Colour: from the brand, used as a system
+
+The palettes (`studio palette`) are all built from the brand. Pick a **colour system** for each concept, not just
+two hex codes. Systems that work (references/inspiration.md shows each one):
+
+| System | How | Feels |
+|---|---|---|
+| Tonal brand | one hue from a deep shade to a bright tint; white type; nothing else | immersive, premium, owned |
+| Clean canvas | white or light grey slides; the brand only on the key word, buttons and UI | trustworthy, modern, calm |
+| Rhythm | brand slide, white slide, dark slide, repeat | energetic, editorial |
+| Pastel family | each slide its own pastel, all from one family around the brand | friendly, warm, kids, lifestyle |
+| Dark + glow | near-black tinted with the brand, the brand as light | night, media, focus, premium |
+
+- The accent is the brand colour, white, or ink. A second hue comes only from the brand itself (a second logo
+  colour) or from the app's own content: posters, food, photos, drawings.
+- A colour the user liked on another project is not a brand colour. Never carry it over. The worked example below
+  is cobalt and acid lime because that was *its* brand; another app gets its own.
+- Inside one set, keep to one system. Change it between concepts.
+
+## 3D and objects: the balance
+
+3D is seasoning. The references use it on about a third to half of the slides, never all of them, and never as
+filler.
+
+- **Dose**: at most one 3D object per slide, and most slides have none. Big (a mascot or hero object that owns the
+  slide, often cropped by the edge or crossing into the next slide) or small and inline (a chip inside the
+  headline, a coin next to a number, emoji-size objects matching the UI's icons). Avoid the mid-size prop floating
+  beside the phone.
+- **Meaning**: the object comes from the app's world (a parcel for delivery, a coin for rewards, a microphone for
+  music, the brand mascot). If it could sit on any app's slide, drop it.
+- **Interaction**: it touches the content. It peeks from behind the phone, rests on a card, is held in a hand,
+  presses a button, or replaces a word in the headline.
+- **Style matches the concept**, one style per set (`studio model … &look=`):
+
+| Concept mood | Look | Example |
+|---|---|---|
+| bold commerce, fintech, utility | `glossy`: smooth 3D-icon plastic | a shopping bag, a coin, a shield |
+| calm, wellness, friendly, kids | `clay`: matte and soft | a sleepy moon, a heart |
+| game, playful, gamified habits | `toon`: flat cartoon bands + ink outline | a treasure chest, gold coins |
+| tech, data, geometric, crypto | `lowpoly`: faceted | a gem, a chart, a planet |
+| premium, realistic, alerts and rewards | `metal`: polished gold or chrome | a gold bell, gold coins, chrome arrows |
+| real-world subject (cars, food, pets, travel) | photo-real: the user's photos or licensed cut-outs | a car, a burger, a dog |
+| the brand has a mascot | the mascot, always | the brand's own art |
+
+## Proof: laurels and stats
+
+When the user has any real proof, show it. It is one of the strongest pops in the references.
+
+- **What counts**: press ("As featured in" + the outlets' logos on one quiet panel), App Store or Play rating and rating count, users, downloads, items or actions counted by the
+  app ("10M+ steps walked"), years running, real awards (Apps we love, App of the Day), press ("Featured on …"),
+  partners, research backing, and measured outcomes ("-78% doomscrolling").
+- **Where**: slide 1 under or above the headline (most common), a bottom proof band, split stat tiles, or the
+  closing trust slide. One or two laurels side by side, never a wall of badges.
+- **How**: a laurel (`data-laurel`, `data-leaf` to match the concept) around one big number and a small label
+  ("4.8" / "on App Store", "100K+" / "users"). Colour it in the concept's on-base or accent. A scalloped seal for
+  a single recognition, a pill for a running count.
+- **Never fake it.** No data, no laurel. Ask at intake (intake.md, question 5).
 
 ## 3. Worked example: what one client approved
 

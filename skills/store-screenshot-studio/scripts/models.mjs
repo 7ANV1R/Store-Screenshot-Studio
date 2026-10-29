@@ -1,4 +1,4 @@
-// node models.mjs "<out>=<model>?<query>" … → ../assets/3d/<out>.png (transparent, trimmed). Usually via `studio model`.
+// node models.mjs "<out>=<model>?<query>" … → $STUDIO_OUT/<out>.png (transparent, trimmed). Run via `studio model`.
 // name:hex sets the main plastic colour (cart2 / truck2 / globe truck); out=model?query passes any query (c, h, empty)
 import { chromium } from 'playwright-core';
 import fs from 'node:fs';
@@ -11,7 +11,7 @@ const gpu = process.platform === 'darwin' ? ['--use-angle=metal', '--enable-gpu'
 let b; for (const channel of ['chrome', 'msedge', undefined]) { try { b = await chromium.launch({ channel, args: ['--allow-file-access-from-files', ...gpu] }); break; } catch {} }
 if (!b) throw new Error('no Chromium-based browser found (install Google Chrome)');
 for (const spec of names) {
-  // spec: name | name:hex | out=name?query   (e.g. cart-white=cart2?c=f2f4f8&h=d8ff3e&empty)
+  // spec: name | name:hex | out=name?query   (e.g. cart-white=cart2?c=f2f4f8&h=ffffff&empty&look=clay)
   let [m, c] = spec.split(':'), outName = c ? `${m}-${c}` : m, query = c ? '&c=' + c : '';
   if (spec.includes('=') && spec.indexOf('=') < (spec.indexOf('?') + 1 || Infinity)) {
     [outName, m] = [spec.slice(0, spec.indexOf('=')), spec.slice(spec.indexOf('=') + 1)];
@@ -24,7 +24,7 @@ for (const spec of names) {
   p.on('pageerror', e => console.error(m, e.message));
   await p.goto(pathToFileURL(path.join(dir, 'models.html')).href + '?m=' + m + query);
   await p.waitForSelector('body[data-done]', { timeout: 120000 });
-  const out = path.join(dir, '..', 'assets', '3d', `${outName}.png`);
+  const out = path.join(process.env.STUDIO_OUT || path.join(dir, '..', 'assets', '3d'), `${outName}.png`);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   if (full) await p.locator('canvas').screenshot({ path: out, omitBackground: true });
   else {   // trim the transparent margin in the page (no Python needed)

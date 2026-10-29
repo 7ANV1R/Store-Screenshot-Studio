@@ -107,18 +107,22 @@ function buildCrop(el) {
   });
 }
 
-// <svg data-laurel="color"> → two leafy branches framing the middle (viewBox 800x420)
+// <svg data-laurel="color" [data-leaf="classic|slim|round|wheat"]> → two leafy branches framing the middle (viewBox
+// 800x420). Leaf styles: classic · slim (fine, elegant: premium, calm) · round (chunky, cute: kids, playful) · wheat
+// (leaves hugging the stem: editorial, food, nature)
+const LEAVES = { classic: [9, 30, 11, 38, 13], slim: [12, 34, 6, 34, 9.8], round: [9, 24, 12, 55, 12.5], wheat: [12, 26, 9, 22, 9.8] };
 function buildLaurel(svg) {
   const c = svg.dataset.laurel, cx = 400, cy = 185, rx = 360, ry = 195;
+  const [n, lw, lh, spread, step] = LEAVES[svg.dataset.leaf] || LEAVES.classic;   // pairs, leaf size, angle off stem, spacing (deg)
   let g = '';
   const pt = a => [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
-  for (let i = 0; i < 9; i++) {
-    const a = (104 + i * 13) * Math.PI / 180, [x, y] = pt(a);
+  for (let i = 0; i < n; i++) {
+    const a = (104 + i * step) * Math.PI / 180, [x, y] = pt(a);
     const tang = Math.atan2(ry * Math.cos(a), -rx * Math.sin(a)) * 180 / Math.PI; // direction of travel (up the branch)
-    const s = 1 - i * .055;
+    const s = 1 - i * .5 / n;
     for (const side of [-1, 1])
-      g += `<ellipse cx="${x}" cy="${y}" rx="${30 * s}" ry="${11 * s}" style="fill:${c}"
-        transform="rotate(${tang + side * 38} ${x} ${y}) translate(${26 * s} 0)"/>`;
+      g += `<ellipse cx="${x}" cy="${y}" rx="${lw * s}" ry="${lh * s}" style="fill:${c}"
+        transform="rotate(${tang + side * spread} ${x} ${y}) translate(${lw * .87 * s} 0)"/>`;
   }
   const [x0, y0] = pt(100 * Math.PI / 180), [x1, y1] = pt(212 * Math.PI / 180);
   g += `<path d="M${x0} ${y0} A${rx} ${ry} 0 0 1 ${x1} ${y1}" fill="none" style="stroke:${c}" stroke-width="5" stroke-linecap="round"/>`;
