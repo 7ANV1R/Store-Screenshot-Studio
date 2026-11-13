@@ -41,14 +41,27 @@ const SIZES = {   // key → output folder in final/, canvas
   iphone: ['app-store-iphone-6.9in', 1320, 2868], ipad: ['app-store-ipad-13in', 2048, 2732],
   android: ['google-play-phone', 1080, 1920], tab: ['google-play-tablet-7in', 1200, 1920],
 };
-// banners: one banner.html, its .key block (KEY design px) fitted into each format's safe area [x, y, w, h], the
-// background filling the canvas. ponytail: the safe areas are third-party measurements (Apple's templates, Play guides);
-// re-measure from Apple's templates or Play Console's preview if a store changes its crops.
+// banners: one banner.html, its .key block (KEY design px) centred on every canvas, the background filling it.
+// The feature graphic fits .key into Play's safe area [x, y, w, h]. The App Store header and search result reuse that
+// exact framing, scaled to their canvas height (same crop: words centred, phones running off the bottom edge), capped
+// at `wmax` of the canvas width so a plain side margin stays. Fitting .key into Apple's small safe areas instead made
+// both images look zoomed out, a little art in a big empty frame. Apple's safe areas are kept for the overview only.
+// ponytail: the safe areas are third-party measurements (Apple's templates, Play guides); re-measure from Apple's
+// templates or Play Console's preview if a store changes its crops.
 const KEY = [2160, 1030];
-const BANNERS = {
+const BANNERS = {   // key → [file, W, H, safe area, wmax (set = feature graphic framing scaled to this canvas)]
   feature: ['google-play-feature-graphic.png', 1024, 500, [154, 75, 716, 350]],
-  header: ['app-store-header.png', 3840, 1646, [1097, 493, 1646, 661]],
-  search: ['app-store-search-result.png', 3840, 2560, [836, 765, 2168, 1030]],
+  header: ['app-store-header.png', 3840, 1646, [1097, 493, 1646, 661], .9],
+  search: ['app-store-search-result.png', 3840, 2560, [836, 765, 2168, 1030], .84],
+};
+const safeFit = ([, , , [, , sw, sh]]) => Math.min(sw / KEY[0], sh / KEY[1]);
+const FRAME_H = BANNERS.feature[2] / safeFit(BANNERS.feature);   // key px of height the feature graphic shows
+// .key's scale and top-left on the store canvas
+const bannerFit = b => {
+  const [, W, H, [sx, sy, sw, sh], wmax] = b;
+  const fit = wmax ? Math.min(H / FRAME_H, W * wmax / KEY[0]) : safeFit(b);
+  return wmax ? { fit, x: (W - KEY[0] * fit) / 2, y: (H - KEY[1] * fit) / 2 }
+    : { fit, x: sx + (sw - KEY[0] * fit) / 2, y: sy + (sh - KEY[1] * fit) / 2 };
 };
 const DEPS = { 'playwright-core': '^1.55.0', three: '^0.186.1', 'd3-array': '^3.2.4', 'd3-geo': '^3.1.1', 'topojson-client': '^3.1.0', 'world-atlas': '^2.0.2' };
 const die = m => { console.error('✗ ' + m); process.exit(1); };
@@ -488,7 +501,7 @@ const commands = {
     for (const key of only.filter(k => BANNERS[k])) {
       // render so the key block sits at its authored size (3D phones under ~800px blur when drawn small), then
       // downsample to the store size; formats whose block needs no shrinking render 1:1
-      const [file, W, H, [sx, sy, sw, sh]] = BANNERS[key], fit = Math.min(sw / KEY[0], sh / KEY[1]), k = Math.min(1, fit);
+      const [file, W, H] = BANNERS[key], { fit, x, y } = bannerFit(BANNERS[key]), k = Math.min(1, fit);
       const page = await browser.newPage({ viewport: { width: Math.round(W / k), height: Math.round(H / k) } });
       page.on('pageerror', e => console.error(`  ${key}: ${e.message}`));
       await page.goto(pathToFileURL(path.join(srcDir, 'banner.html')).href, { waitUntil: 'networkidle' });
@@ -497,7 +510,7 @@ const commands = {
         const el = document.querySelector('.key');
         if (el) Object.assign(el.style, { transformOrigin: '0 0', transform: `translate(${x}px,${y}px) scale(${s})` });
         return !!el;
-      }, [(sx + (sw - KEY[0] * fit) / 2) / k, (sy + (sh - KEY[1] * fit) / 2) / k, fit / k]);
+      }, [x / k, y / k, fit / k]);
       if (!ok) die('banner.html has no .key block (start again from SKILL_DIR/assets/templates/banner.html)');
       const out = path.join(finalDir, file);
       if (k === 1) await shoot(page, out);
@@ -514,7 +527,7 @@ const commands = {
         fs.readdirSync(path.join(finalDir, f)).filter(x => x.endsWith('.png')).sort()
           .map(x => `<img src="${f}/${x}" style="height:${rowH}px;border-radius:24px">`).join('')}</div>`).join('')}${
       Object.values(BANNERS).filter(([f]) => fs.existsSync(path.join(finalDir, f))).map(([f, w, h, [x, y, sw, sh]]) =>
-        `<div style="padding:40px 0 20px">${f.slice(0, -4)} · ${w}x${h} <span style="font-weight:500;color:#777">(dashed: safe area)</span></div>
+        `<div style="padding:40px 0 20px">${f.slice(0, -4)} · ${w}x${h} <span style="font-weight:500;color:#777">(dashed: the store's crop-safe area)</span></div>
         <div style="position:relative;width:2048px"><img src="${f}" style="display:block;width:100%">
         <div style="position:absolute;left:${pct(x, w)};top:${pct(y, h)};width:${pct(sw, w)};height:${pct(sh, h)};outline:4px dashed #ff2d55"></div></div>`).join('')}</body>`,
       path.join(finalDir, 'overview.png'), vw);

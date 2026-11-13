@@ -201,11 +201,13 @@ studio final N/concept --open
 This renders iPhone 1320×2868, iPad 2048×2732, Android 1080×1920, Android tablet 1200×1920, three banners from
 one file (Play feature graphic 1024×500, App Store header 3840×1646, App Store search result 3840×2560) and
 `final/overview.png`. Then:
-1. Restyle `.studio/rounds/final/banner.html` in the chosen concept: the key art (logo, headline, phones) in its
-   `.key` box, the background filling any canvas shape (rules in the file's header comment). Use slide 1's headline.
-2. View the overview and one slide per size. Each banner shows its safe area dashed: every word and the logo must
-   sit inside it. If something collides, tune `.studio/rounds/final/layout.js`
-   (references/engine.md).
+1. Restyle `.studio/rounds/final/banner.html` in the chosen concept: the key art (logo, headline, two phones, at
+   most one prop, blurred behind the phones) in its `.key` box, the background filling any canvas shape (rules in
+   the file's header comment). Use slide 1's headline. Never add extra devices or art to fill the wide App Store
+   canvases: `final` already scales the same composition up to fill them.
+2. View the overview and one slide per size. All three banners should share one framing: words centred top to
+   bottom, phones running off the bottom edge, a plain side margin. The dashed box is each store's crop-safe area,
+   a reference. If a slide collides, tune `.studio/rounds/final/layout.js` (references/engine.md).
 3. Run `studio final` (no ROUND: re-renders without re-promoting). It ends with `✓ check passed`. Tell the user
    the folders in `final/` are ready to upload, one per store size, plus the three wide images.
 

@@ -111,20 +111,25 @@ Edit `.studio/rounds/final/layout.js` to tune; `iphone` must stay the identity (
 
 ## Banners (banner.html, rendered by `final`)
 
-One file makes three assets. `.key` (2160x1030 px) holds the logo, headline, sub and phones. `final` fits it into
-each format's safe area at about authored size, then downsamples (Lanczos-3) to the store size. That keeps the 3D
-phones sharp, and every PNG is RGB, with no alpha channel.
+One file makes three assets. `.key` (2160x1030 px) holds the logo, headline, sub and phones. `final` centres it on
+every canvas with one framing. The feature graphic fits `.key` into Play's safe area. The App Store header and search
+result reuse that exact crop, scaled to their canvas height and capped at a share of the width (`wmax`) so a plain
+side margin stays. Words sit centred top to bottom and the phones run off the bottom edge in all three. Small blocks
+render at authored size and downsample (Lanczos-3), which keeps the 3D phones sharp; every PNG is RGB, with no alpha.
 
-| Asset | Canvas | Safe area (x, y, w, h) |
-|---|---|---|
-| Play feature graphic | 1024 × 500 | 154, 75, 716 × 350 |
-| App Store product page header (21:9) | 3840 × 1646 | 1097, 493, 1646 × 661 |
-| App Store search result (3:2) | 3840 × 2560 | 836, 765, 2168 × 1030 |
+| Asset | Canvas | `.key` placement | Crop-safe area (x, y, w, h), overview only |
+|---|---|---|---|
+| Play feature graphic | 1024 × 500 | fitted into the safe area | 154, 75, 716 × 350 |
+| App Store product page header (21:9) | 3840 × 1646 | feature framing, `wmax` .9 | 1097, 493, 1646 × 661 |
+| App Store search result (3:2) | 3840 × 2560 | feature framing, `wmax` .84 | 836, 765, 2168 × 1030 |
 
-The safe areas are third-party measurements of Apple's templates and of Play's crops (`BANNERS` in studio.mjs).
-Words and the logo stay inside `.key`. Phones and props may run past it. The background is `.slide`; its shape
-changes per format, so use % positions and fill the area outside the safe box with art (Mac and iPad show the whole
-header). Apple's 16:9 "universal" asset (5244 × 2950) is not made, because its safe area is not published.
+Why not fit `.key` into Apple's safe areas: they are a small middle box (43% of the header's width), so the phones
+shrank with the words and both images looked zoomed out, a little art in a big empty frame. The trade: on the header
+the words reach past Apple's iPhone crop box, so preview it in App Store Connect. The safe areas are third-party
+measurements of Apple's templates and of Play's crops (`BANNERS` in studio.mjs). Words and the logo stay inside
+`.key`; phones and props may run past it but stay part of its composition (no extra devices added on the canvas).
+The background is `.slide`. Apple's 16:9 "universal" asset (5244 × 2950) is not made, because its safe area is not
+published.
 
 ## Props (`studio props`, `studio model`)
 

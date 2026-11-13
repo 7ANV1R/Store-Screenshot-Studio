@@ -123,7 +123,7 @@ The renderer lives in your system's temp folder, shared by every project, and re
 | App Store product page header | 3840 × 1646 |
 | App Store search result | 3840 × 2560 |
 
-The three wide images are one design. Its headline and logo always sit inside each store's safe area, so no crop or overlay cuts them off.
+The three wide images are one design with one framing: the headline centred top to bottom, the phones running off the bottom edge, scaled to fill each canvas with a plain margin.
 
 <details>
 <summary><b>See the full example set in every size</b></summary>
